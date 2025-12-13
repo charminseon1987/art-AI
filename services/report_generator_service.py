@@ -27,7 +27,7 @@ class ReportGeneratorService:
             })
         
         # 리포트 생성 프롬프트
-        prompt = f"""아래 정보를 바탕으로 '그림 기반 상담 참고 리포트'를 작성하세요.
+        prompt = f"""당신은 20년 경력의 미술 심리 전문가입니다. 아래 정보를 바탕으로 '그림 기반 상담 참고 리포트'를 작성하세요.
 
 [입력 정보]
 1. 그림 이미지 분석 결과
@@ -47,13 +47,25 @@ class ReportGeneratorService:
 {json.dumps({
     "주요감정": report_data.emotional_language.dominant_emotions[:5] if report_data.emotional_language.dominant_emotions else [],
     "감정적톤": report_data.emotional_language.emotional_tone or "",
-    "상징적요소": report_data.emotional_language.symbolic_elements[:5] if report_data.emotional_language.symbolic_elements else []
+    "상징적요소": report_data.emotional_language.symbolic_elements[:5] if report_data.emotional_language.symbolic_elements else [],
+    "강도수준": report_data.emotional_language.intensity_level or ""
+}, ensure_ascii=False, indent=2)}
+
+[전문가 결론]
+{json.dumps({
+    "요약": report_data.professional_conclusion.executive_summary or "",
+    "주요발견": report_data.professional_conclusion.key_findings[:5] if report_data.professional_conclusion.key_findings else [],
+    "상담방향성": report_data.professional_conclusion.counseling_direction or "",
+    "집중탐색영역": report_data.professional_conclusion.focus_areas[:5] if report_data.professional_conclusion.focus_areas else [],
+    "전문가평가": report_data.professional_conclusion.professional_assessment or "",
+    "권장사항": report_data.professional_conclusion.recommendations[:5] if report_data.professional_conclusion.recommendations else []
 }, ensure_ascii=False, indent=2)}
 
 [아이의 말 (Chat 응답)]
 {json.dumps(child_words, ensure_ascii=False, indent=2)}
 
 [규칙]
+- 20년 경력 미술 심리 전문가의 관점으로 작성
 - 해석, 진단, 판단 금지
 - 관찰형 문장 사용
 - 초등 저학년 보호자가 읽기 쉬운 언어 사용
@@ -61,6 +73,7 @@ class ReportGeneratorService:
 - "~일 수 있음", "~으로 보임" 형태 권장
 - 심리·의학적 용어 사용 금지
 - 단정형 문장 금지
+- 전문가 결론 내용을 자연스럽게 통합
 
 [리포트 형식]
 다음 형식으로 작성하세요:

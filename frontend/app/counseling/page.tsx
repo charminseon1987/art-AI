@@ -124,15 +124,17 @@ export default function CounselingPage() {
               <div className="bg-white p-6 rounded-lg border border-gray-200">
                 <div className="prose max-w-none">
                   <div 
-                    className="markdown-content text-gray-800 whitespace-pre-line"
+                    className="markdown-content text-gray-800"
                     dangerouslySetInnerHTML={{ 
                       __html: simpleReport
+                        .replace(/\n\n/g, '</p><p class="mb-4">')
                         .replace(/\n/g, '<br />')
-                        .replace(/##\s+(.+)/g, '<h2 class="text-xl font-bold mt-6 mb-4 text-gray-900">$1</h2>')
-                        .replace(/#\s+(.+)/g, '<h1 class="text-2xl font-bold mb-6 text-gray-900">$1</h1>')
-                        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                        .replace(/##\s+(.+?)(?=\n|$)/g, '<h2 class="text-xl font-bold mt-6 mb-4 text-gray-900 border-b pb-2">$1</h2>')
+                        .replace(/###\s+(.+?)(?=\n|$)/g, '<h3 class="text-lg font-semibold mt-4 mb-2 text-gray-800">$1</h3>')
+                        .replace(/#\s+(.+?)(?=\n|$)/g, '<h1 class="text-2xl font-bold mb-6 text-gray-900">$1</h1>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
                         .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                        .replace(/•\s/g, '• ')
+                        .replace(/^(.+)$/gm, '<p class="mb-2">$1</p>')
                     }} 
                   />
                 </div>

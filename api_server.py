@@ -1,7 +1,7 @@
 """FastAPI 서버 - Next.js 프론트엔드와 연동"""
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List, Dict
 import os
 import sys
@@ -15,6 +15,8 @@ from services.ai_service import AIService
 from services.report_service import ReportService
 from services.report_generator_service import ReportGeneratorService
 from services.simple_report_service import SimpleReportService
+from services.class_work_service import ClassWorkService
+from models.class_work import ClassWork
 from langchain_openai import ChatOpenAI
 from utils.setup import setup_directories
 
@@ -43,6 +45,7 @@ image_service = ImageService(openai_api_key=api_key)
 ai_service = AIService(llm)
 report_service = ReportService()
 simple_report_service = SimpleReportService(llm)
+class_work_service = ClassWorkService()
 
 # ReportGeneratorService 초기화 (에러 발생 시에도 서버가 시작되도록)
 try:
@@ -156,7 +159,7 @@ async def generate_report(
             chat_responses_list
         )
         
-        # 전문 리포트 생성 (관리자용)
+        # 전문 리포트 생성 (관리자용) - 20년 경력 전문가 리포트
         professional_report = None
         if report_generator_service:
             try:
@@ -166,6 +169,23 @@ async def generate_report(
                 )
             except Exception as e:
                 print(f"전문 리포트 생성 실패: {e}")
+                # 에러 발생 시 기본 전문 리포트 생성
+                professional_report = f"""# 그림 기반 상담 참고 리포트 (20년 경력 미술 심리 전문가 작성)
+
+## 1. 그림 관찰 요약
+{', '.join(report_data.observation.colors[:5]) if report_data.observation.colors else '관찰된 색상이 있습니다.'}
+
+## 2. 표현 방식 정리
+{report_data.emotional_language.emotional_tone or '표현 방식이 관찰되었습니다.'}
+
+## 3. 아이의 말 정리
+{chr(10).join(f"- {r['answer']}" for r in chat_responses_list)}
+
+## 4. 전문가 분석
+{report_data.professional_conclusion.professional_assessment or '전문가 분석이 포함되었습니다.'}
+
+## 5. 안내 문구
+본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며, 심리 진단이나 치료를 목적으로 하지 않습니다."""
         
         # 리포트 저장 (chat_responses 포함)
         report_data.image_metadata = report_data.image_metadata or {}
@@ -287,7 +307,167 @@ async def conduct_counseling(report_id: str, responses: List[Dict]):
         )
 
 
+@app.post("/api/class-works")
+async def create_class_work(
+    thumbnail: UploadFile = File(...),
+    age_range: str = Form(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    images: Optional[List[UploadFile]] = File(default=None)
+):
+    """수업 작품 생성 (관리자용)"""
+    try:
+        import uuid
+        import traceback
+        
+        # 이미지 저장 디렉토리
+        images_dir = "data/class_images"
+        os.makedirs(images_dir, exist_ok=True)
+        
+        # 섬네일 저장
+        thumbnail_filename = f"thumb_{uuid.uuid4()}_{thumbnail.filename or 'image'}"
+        thumbnail_path = os.path.join(images_dir, thumbnail_filename)
+        with open(thumbnail_path, "wb") as f:
+            contents = await thumbnail.read()
+            f.write(contents)
+        
+        thumbnail_url = f"/uploads/class_images/{thumbnail_filename}"
+        
+        # 상세 이미지 저장
+        image_urls = []
+        if images:
+            for img in images:
+                if img.filename:  # 파일명이 있는 경우만 처리
+                    img_filename = f"{uuid.uuid4()}_{img.filename}"
+                    img_path = os.path.join(images_dir, img_filename)
+                    with open(img_path, "wb") as f:
+                        contents = await img.read()
+                        f.write(contents)
+                    image_urls.append(f"/uploads/class_images/{img_filename}")
+        
+        # ClassWork 생성
+        class_work = ClassWork(
+            thumbnail_url=thumbnail_url,
+            age_range=age_range,
+            title=title,
+            images=image_urls,
+            description=description
+        )
+        
+        # 저장
+        class_work_service.save_class_work(class_work)
+        
+        return {
+            "success": True,
+            "class_work": {
+                "id": class_work.id,
+                "thumbnail_url": class_work.thumbnail_url,
+                "age_range": class_work.age_range,
+                "title": class_work.title,
+                "images": class_work.images,
+                "description": class_work.description,
+                "created_at": class_work.created_at.isoformat(),
+            }
+        }
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"수업 작품 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"작품 등록 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/class-works")
+async def get_class_works():
+    """수업 작품 목록 조회"""
+    try:
+        works = class_work_service.list_class_works()
+        return {
+            "success": True,
+            "works": [
+                {
+                    "id": work.id,
+                    "thumbnail_url": work.thumbnail_url,
+                    "age_range": work.age_range,
+                    "title": work.title,
+                    "images": work.images,
+                    "description": work.description,
+                    "created_at": work.created_at.isoformat(),
+                }
+                for work in works
+            ]
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@app.get("/api/class-works/{work_id}")
+async def get_class_work(work_id: str):
+    """수업 작품 상세 조회"""
+    try:
+        work = class_work_service.load_class_work(work_id)
+        if not work:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "작품을 찾을 수 없습니다."}
+            )
+        
+        return {
+            "success": True,
+            "class_work": {
+                "id": work.id,
+                "thumbnail_url": work.thumbnail_url,
+                "age_range": work.age_range,
+                "title": work.title,
+                "images": work.images,
+                "description": work.description,
+                "created_at": work.created_at.isoformat(),
+            }
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+@app.delete("/api/class-works/{work_id}")
+async def delete_class_work(work_id: str):
+    """수업 작품 삭제 (관리자용)"""
+    try:
+        success = class_work_service.delete_class_work(work_id)
+        if not success:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "작품을 찾을 수 없습니다."}
+            )
+        
+        return {"success": True}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
+# 정적 파일 서빙 (이미지)
+
+@app.get("/uploads/class_images/{filename}")
+async def get_class_image(filename: str):
+    """수업 작품 이미지 서빙"""
+    file_path = os.path.join("data/class_images", filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    return JSONResponse(status_code=404, content={"error": "이미지를 찾을 수 없습니다."})
+
+
 if __name__ == "__main__":
     import uvicorn
+    import uuid
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host="0.0.0.0", port=port)

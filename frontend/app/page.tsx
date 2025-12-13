@@ -7,14 +7,12 @@ export default function Home() {
       {/* Hero Section */}
       <section className="text-center py-20 px-4 bg-gradient-to-b from-blue-50 to-white">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
-          대전 초등 저학년 개인 미술수업
+          대전 유아 · 초등 연계 개인 미술 수업
         </h1>
-        <h2 className="text-2xl md:text-3xl text-gray-600 mb-8 font-normal">
-          그림으로 아이 마음을 천천히 이해합니다
-        </h2>
-        <p className="text-lg text-gray-500 mb-12 leading-relaxed max-w-2xl mx-auto">
-          5살부터 고등학생까지 함께해온 미술 선생님이<br />
-          아이의 그림을 수업과 상담으로 연결합니다.
+        <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed max-w-2xl mx-auto">
+          5살부터 시작해<br />
+          초등, 중·고등까지 함께 성장해온<br />
+          미술 선생님의 개인 수업입니다.
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
@@ -60,13 +58,13 @@ export default function Home() {
       </section>
 
       {/* 차별점 섹션 */}
-      <section className="py-16 px-4">
+      <section className="py-16 px-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <div className="max-w-4xl mx-auto">
           <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">
             이 수업이 다른 이유
           </h3>
           
-          <div className="bg-white p-8 rounded-lg border-l-4 border-blue-500 shadow-sm">
+          <div className="bg-white p-8 rounded-lg border-l-4 border-blue-500 shadow-md">
             <h4 className="text-2xl font-bold text-gray-800 mb-6">
               아이에게 "왜 이렇게 그렸어?"라고 묻지 않습니다
             </h4>

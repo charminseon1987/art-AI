@@ -1,106 +1,110 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Image as ImageIcon, Calendar, User } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, Users, Clock, MapPin } from "lucide-react";
+
+interface ClassWork {
+  id: string;
+  thumbnail_url: string;
+  age_range: string;
+  title: string;
+  images: string[];
+  description?: string;
+  created_at: string;
+}
 
 export default function ClassPage() {
+  const [works, setWorks] = useState<ClassWork[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadWorks();
+  }, []);
+
+  const loadWorks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/class-works");
+      const data = await response.json();
+      if (data.success) {
+        setWorks(data.works || []);
+      }
+    } catch (error) {
+      console.error("작품 로드 오류:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* 헤드라인 */}
+    <div className="min-h-screen py-12 px-4 bg-gray-50">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-            초등 저학년을 위한
+            미술 수업 작품 갤러리
           </h1>
-          <h2 className="text-2xl md:text-3xl text-gray-600">
-            부담 없는 1:1 개인 미술 수업
-          </h2>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {/* 수업 대상 */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Users className="w-6 h-6 text-blue-600" />
-              수업 대상
-            </h3>
-            <ul className="space-y-3 text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span><strong>5세 ~ 초등 저학년</strong></span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>그림을 좋아하지만 말이 적은 아이</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>감정 표현이 서툰 아이</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>집중 시간이 짧은 아이</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* 수업 방식 */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Clock className="w-6 h-6 text-blue-600" />
-              수업 방식
-            </h3>
-            <ul className="space-y-3 text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>정해진 답 없는 미술 활동</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>아이 속도에 맞춘 진행</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>대화는 자연스럽게, 강요하지 않음</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>필요 시 보호자 피드백 제공</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* 핵심 메시지 */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-8">
-          <p className="text-lg text-gray-800">
-            💡 <strong>아이가 "그리기 싫다"고 말해도</strong><br />
-            수업은 그 지점에서 시작합니다.
+          <p className="text-lg text-gray-600">
+            아이들의 창의적인 작품들을 만나보세요
           </p>
         </div>
 
-        {/* 수업 장소 */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <MapPin className="w-6 h-6 text-blue-600" />
-            수업 장소
-          </h3>
-          <ul className="space-y-2 text-gray-700">
-            <li>대전 ○○동 (상담 시 상세 안내)</li>
-            <li>개인 수업 / 소그룹 가능</li>
-          </ul>
-        </div>
-
-        {/* CTA */}
-        <div className="text-center">
-          <Link
-            href="/consultation"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors"
-          >
-            상담 신청하기
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">로딩 중...</p>
+          </div>
+        ) : works.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-md">
+            <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">아직 등록된 작품이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {works.map((work) => (
+              <Link
+                key={work.id}
+                href={`/class/${work.id}`}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="relative w-full h-64 bg-gray-200">
+                  {work.thumbnail_url ? (
+                    <img
+                      src={`http://localhost:8000${work.thumbnail_url}`}
+                      alt={work.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-16 h-16 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-gray-600">{work.age_range}</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">
+                    {work.title}
+                  </h3>
+                  {work.description && (
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                      {work.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Calendar className="w-3 h-3" />
+                    <span>
+                      {new Date(work.created_at).toLocaleDateString("ko-KR")}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

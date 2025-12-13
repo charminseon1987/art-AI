@@ -14,7 +14,10 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // 고정 질문 세트 (명세에 따른)
+  // AI가 생성한 상담 질문 우선 사용, 없으면 기본 질문 사용
+  const aiGeneratedQuestions = reportData?.reflection_questions?.questions || [];
+  
+  // 고정 질문 세트 (명세에 따른 - AI 질문이 없을 때 사용)
   const fixedQuestions = [
     {
       id: "Q1",
@@ -43,18 +46,23 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
     }
   ];
 
-  // 선택 질문 표시 여부 결정 (아이 응답이 길면 표시)
-  const shouldShowOptionalQuestion = () => {
-    if (responses.length < 4) return false;
-    const avgLength = responses.reduce((sum, r) => sum + r.answer.length, 0) / responses.length;
-    return avgLength > 10; // 평균 응답 길이가 10자 이상이면 선택 질문 표시
-  };
+  // 사용할 질문 목록 결정 (AI 질문이 있으면 사용, 없으면 기본 질문)
+  const questionsToUse = aiGeneratedQuestions.length > 0 
+    ? aiGeneratedQuestions.slice(0, 5).map((q: string, idx: number) => ({
+        id: `AI-Q${idx + 1}`,
+        text: q,
+        type: idx === 0 ? "icebreaking" : idx < 3 ? "exploration" : "story"
+      }))
+    : fixedQuestions;
+
+  // 최대 질문 수 (AI 질문이 있으면 최대 5개, 기본 질문은 4개 필수)
+  const maxQuestions = aiGeneratedQuestions.length > 0 
+    ? Math.min(aiGeneratedQuestions.length, 5) // AI 질문이 있으면 최대 5개
+    : 4; // 기본 질문은 4개 필수
 
   const getCurrentQuestion = () => {
-    if (currentQuestionIndex < 4) {
-      return fixedQuestions[currentQuestionIndex];
-    } else if (currentQuestionIndex === 4 && shouldShowOptionalQuestion()) {
-      return fixedQuestions[4];
+    if (currentQuestionIndex < maxQuestions) {
+      return questionsToUse[currentQuestionIndex];
     }
     return null;
   };
@@ -65,28 +73,27 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
     if (!currentAnswer.trim()) return;
     if (!currentQuestion) return;
 
+    // 현재 답변을 깨끗하게 저장 (앞뒤 공백 제거)
+    const cleanAnswer = currentAnswer.trim();
+    
     const newResponses = [
       ...responses,
-      { question: currentQuestion.text, answer: currentAnswer },
+      { question: currentQuestion.text, answer: cleanAnswer },
     ];
     setResponses(newResponses);
+    
+    // 답변 입력 필드 완전히 초기화
     setCurrentAnswer("");
 
     // 다음 질문 결정
     const nextIndex = currentQuestionIndex + 1;
     
-    // 필수 질문 4개 완료 후
-    if (nextIndex === 4) {
-      if (shouldShowOptionalQuestion()) {
-        setCurrentQuestionIndex(4);
-      } else {
-        // 선택 질문 스킵하고 완료
-        handleComplete(newResponses);
-      }
-    } else if (nextIndex > 4) {
+    // 최대 질문 수 확인
+    if (nextIndex >= maxQuestions) {
       // 모든 질문 완료
       handleComplete(newResponses);
     } else {
+      // 다음 질문으로 이동 (상태 업데이트를 명확하게)
       setCurrentQuestionIndex(nextIndex);
     }
   };
@@ -138,6 +145,19 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
         </div>
       )}
 
+      {/* 질문이 모두 완료된 경우 */}
+      {!currentQuestion && !isCompleting && responses.length > 0 && (
+        <div className="text-center py-4">
+          <p className="text-gray-600">모든 질문에 답변해주셔서 감사합니다.</p>
+          <button
+            onClick={() => handleComplete(responses)}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            리포트 생성하기
+          </button>
+        </div>
+      )}
+
       {/* 현재 질문 */}
       {currentQuestion && !isCompleting && (
         <div className="space-y-4">
@@ -146,7 +166,12 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
               <MessageSquare className="w-4 h-4 text-blue-600" />
             </div>
             <div className="flex-1 bg-gray-100 rounded-lg p-4 border border-gray-200">
-              <p className="text-gray-900 font-medium whitespace-pre-line">{currentQuestion.text}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-gray-900 font-medium flex-1">{currentQuestion.text}</p>
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  ({currentQuestionIndex + 1}/{maxQuestions})
+                </span>
+              </div>
             </div>
           </div>
 
@@ -164,11 +189,20 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
           {/* 답변 입력 */}
           <div className="flex gap-2">
             <textarea
+              key={`textarea-${currentQuestionIndex}`}
               value={currentAnswer}
-              onChange={(e) => setCurrentAnswer(e.target.value)}
+              onChange={(e) => {
+                // 입력값을 깨끗하게 설정
+                setCurrentAnswer(e.target.value);
+              }}
+              onBlur={() => {
+                // 포커스가 벗어날 때도 깨끗하게 정리
+                setCurrentAnswer(prev => prev.trim());
+              }}
               placeholder="답변을 입력하세요..."
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 bg-white"
               rows={3}
+              autoFocus={false}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && e.shiftKey === false) {
                   e.preventDefault();
@@ -184,6 +218,13 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
               <Send className="w-5 h-5" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 질문 진행 상황 표시 */}
+      {!isCompleting && questionsToUse.length > 0 && currentQuestion && (
+        <div className="text-center text-sm text-gray-500">
+          질문 {currentQuestionIndex + 1} / {maxQuestions}
         </div>
       )}
     </div>

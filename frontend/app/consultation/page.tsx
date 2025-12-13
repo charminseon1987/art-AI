@@ -28,10 +28,27 @@ export default function ConsultationPage() {
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
             상담·수업 안내
           </h1>
+        </div>
+
+        {/* 문의하기 - 상단 배치 */}
+        <div className="bg-white p-8 rounded-lg shadow-md mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            문의하기
+          </h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <button className="flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-colors">
+              <MessageCircle className="w-5 h-5" />
+              카카오톡으로 문의
+            </button>
+            <button className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg font-semibold transition-colors">
+              <MessageCircle className="w-5 h-5" />
+              네이버 예약하기
+            </button>
+          </div>
         </div>
 
         {/* 진행 흐름 */}
@@ -53,29 +70,12 @@ export default function ConsultationPage() {
         </div>
 
         {/* 상담에 대해 */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-8">
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
           <h2 className="text-xl font-bold text-gray-800 mb-4">상담에 대해</h2>
           <p className="text-lg text-gray-800">
             💡 <strong>아이를 '문제'로 보지 않습니다.</strong><br />
             아이의 속도를 먼저 이해합니다.
           </p>
-        </div>
-
-        {/* 문의하기 */}
-        <div className="bg-white p-8 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-            문의하기
-          </h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-colors">
-              <MessageCircle className="w-5 h-5" />
-              카카오톡으로 문의
-            </button>
-            <button className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg font-semibold transition-colors">
-              <MessageCircle className="w-5 h-5" />
-              네이버 예약하기
-            </button>
-          </div>
         </div>
       </div>
     </div>

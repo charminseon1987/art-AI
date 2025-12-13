@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Download, Eye, Search, Filter } from "lucide-react";
+import { FileText, Download, Eye, Search, Filter, Image as ImageIcon } from "lucide-react";
 import { getReports, getReport } from "@/lib/api";
+import Link from "next/link";
 
 interface Report {
   id: string;
@@ -66,6 +67,17 @@ export default function AdminPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">관리자 페이지</h1>
           <p className="text-gray-600">전문 리포트 관리 및 보관</p>
+          
+          {/* 관리 메뉴 */}
+          <div className="mt-4 flex gap-4">
+            <Link
+              href="/admin/class"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <ImageIcon className="w-5 h-5" />
+              수업 작품 등록
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -232,4 +244,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
