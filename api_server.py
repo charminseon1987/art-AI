@@ -87,8 +87,9 @@ async def analyze_image(
             emotion
         )
         
-        # 메타데이터 저장
+        # 메타데이터 저장 (base64 이미지 포함)
         report_data.image_metadata = image_result["metadata"]
+        report_data.image_metadata["base64"] = image_result.get("base64", "")
         
         # 리포트 저장
         report_service.save_report(report_data)
@@ -118,7 +119,9 @@ async def analyze_image(
 @app.post("/api/generate-report")
 async def generate_report(
     report_id: str = Form(...),
-    chat_responses: str = Form(...)  # JSON string
+    chat_responses: str = Form(...),  # JSON string
+    age: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None)
 ):
     """Chat 응답을 포함한 리포트 생성 API"""
     try:
@@ -141,68 +144,29 @@ async def generate_report(
                 content={"error": "Chat 응답 형식이 올바르지 않습니다."}
             )
         
-        # Chat 기반 리포트 생성
-        if not report_generator_service:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "리포트 생성 서비스가 초기화되지 않았습니다."}
-            )
-        
-        report_content = report_generator_service.generate_chat_based_report(
-            report_data,
-            chat_responses_list
-        )
-        
-        # 간단 리포트 생성 (사용자용)
+        # 간단 리포트 생성 (미술 심리 전문가 리포트 - 최종본)
         simple_report = simple_report_service.generate_simple_report(
             report_data,
-            chat_responses_list
+            chat_responses_list,
+            age=age,
+            gender=gender
         )
         
-        # 전문 리포트 생성 (관리자용) - 20년 경력 전문가 리포트
-        professional_report = None
-        if report_generator_service:
-            try:
-                professional_report = report_generator_service.generate_chat_based_report(
-                    report_data,
-                    chat_responses_list
-                )
-            except Exception as e:
-                print(f"전문 리포트 생성 실패: {e}")
-                # 에러 발생 시 기본 전문 리포트 생성
-                professional_report = f"""# 그림 기반 상담 참고 리포트 (20년 경력 미술 심리 전문가 작성)
-
-## 1. 그림 관찰 요약
-{', '.join(report_data.observation.colors[:5]) if report_data.observation.colors else '관찰된 색상이 있습니다.'}
-
-## 2. 표현 방식 정리
-{report_data.emotional_language.emotional_tone or '표현 방식이 관찰되었습니다.'}
-
-## 3. 아이의 말 정리
-{chr(10).join(f"- {r['answer']}" for r in chat_responses_list)}
-
-## 4. 전문가 분석
-{report_data.professional_conclusion.professional_assessment or '전문가 분석이 포함되었습니다.'}
-
-## 5. 안내 문구
-본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며, 심리 진단이나 치료를 목적으로 하지 않습니다."""
-        
-        # 리포트 저장 (chat_responses 포함)
+        # 리포트 저장 (chat_responses 및 간단 리포트 포함)
         report_data.image_metadata = report_data.image_metadata or {}
         report_data.image_metadata["chat_responses"] = chat_responses_list
         report_data.image_metadata["simple_report"] = simple_report
-        report_data.image_metadata["chat_based_report"] = report_content
-        report_data.image_metadata["professional_report"] = professional_report
+        if age:
+            report_data.image_metadata["age"] = age
+        if gender:
+            report_data.image_metadata["gender"] = gender
         
         report_service.save_report(report_data)
         
         return {
             "success": True,
             "report_id": report_data.id,
-            "simple_report": simple_report,  # 사용자용 간단 리포트
-            "report_content": report_content,  # Chat 기반 리포트
-            "professional_report": professional_report,  # 전문 리포트 (관리자용)
-            "formatted_report": report_generator_service.format_report_for_display(report_content) if report_generator_service else simple_report
+            "simple_report": simple_report,
         }
     except Exception as e:
         return JSONResponse(
@@ -245,6 +209,10 @@ async def get_report(report_id: str):
                 content={"error": "리포트를 찾을 수 없습니다."}
             )
         
+        # image_metadata에서 base64 이미지 추출
+        image_metadata = report.image_metadata.copy() if report.image_metadata else {}
+        base64_image = image_metadata.get("base64", "")
+        
         return {
             "success": True,
             "report": {
@@ -257,6 +225,11 @@ async def get_report(report_id: str):
                 "created_at": report.created_at.isoformat(),
                 "chat_responses": report.image_metadata.get("chat_responses", []),
                 "chat_based_report": report.image_metadata.get("chat_based_report", None),
+                "professional_report": report.image_metadata.get("professional_report", None),
+                "image_metadata": {
+                    **image_metadata,
+                    "base64": base64_image,  # base64 이미지 포함
+                },
             }
         }
     except Exception as e:
@@ -464,6 +437,55 @@ async def get_class_image(filename: str):
     if os.path.exists(file_path):
         return FileResponse(file_path)
     return JSONResponse(status_code=404, content={"error": "이미지를 찾을 수 없습니다."})
+
+
+@app.get("/api/reports/{report_id}/pdf")
+async def generate_pdf_report(report_id: str):
+    """미술 심리 전문가 리포트 PDF 생성"""
+    try:
+        from fastapi.responses import Response
+        
+        # 리포트 로드
+        report_data = report_service.load_report(report_id)
+        if not report_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "리포트를 찾을 수 없습니다."}
+            )
+        
+        # 간단 리포트 생성 (미술 심리 전문가 리포트)
+        chat_responses = report_data.image_metadata.get("chat_responses", [])
+        simple_report = simple_report_service.generate_simple_report(
+            report_data,
+            chat_responses
+        )
+        
+        # PDF 생성
+        pdf_content = report_service.generate_pdf_from_markdown(
+            simple_report,
+            title="그림 관찰 기반 상담 참고 리포트"
+        )
+        
+        # 파일명 생성
+        date_str = report_data.created_at.strftime('%Y%m%d_%H%M%S')
+        report_id_short = report_data.id[:8] if report_data.id else "unknown"
+        filename = f"그림상담보고서_{date_str}_{report_id_short}.pdf"
+        
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"PDF 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"PDF 생성 실패: {str(e)}"}
+        )
 
 
 if __name__ == "__main__":

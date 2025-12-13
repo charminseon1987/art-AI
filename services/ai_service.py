@@ -4,7 +4,6 @@ from langchain_openai import ChatOpenAI
 from agents.image_observation_agent import ImageObservationAgent
 from agents.emotional_language_agent import EmotionalLanguageAgent
 from agents.reflection_question_agent import ReflectionQuestionAgent
-from agents.report_composer_agent import ReportComposerAgent
 from agents.conclusion_agent import ConclusionAgent
 from services.scraping_service import ArtTherapyScrapingService
 from models.report import ReportData, ImageObservation, EmotionalLanguage, ReflectionQuestion, ProfessionalConclusion
@@ -20,7 +19,6 @@ class AIService:
         self.image_agent = ImageObservationAgent(llm)
         self.emotional_agent = EmotionalLanguageAgent(llm)
         self.question_agent = ReflectionQuestionAgent(llm)
-        self.report_agent = ReportComposerAgent(llm)
         self.conclusion_agent = ConclusionAgent(llm)
         self.scraping_service = ArtTherapyScrapingService()
     
@@ -102,22 +100,7 @@ class AIService:
         conclusion_result = conclusion_crew.kickoff()
         professional_conclusion = self.conclusion_agent.parse_conclusion(str(conclusion_result))
         
-        # 5단계: 리포트 작성
-        report_task = self.report_agent.create_report_composition_task(
-            observation,
-            emotional_language,
-            reflection_questions,
-            user_emotion
-        )
-        report_crew = Crew(
-            agents=[self.report_agent.agent],
-            tasks=[report_task],
-            process=Process.sequential,
-            verbose=True
-        )
-        report_text = report_crew.kickoff()
-        
-        # ReportData 객체 생성
+        # ReportData 객체 생성 (20년 경력 상담전문가의 FinalAnswer를 보고서로 사용)
         import uuid
         report_data = ReportData(
             id=str(uuid.uuid4()),
@@ -128,8 +111,8 @@ class AIService:
             user_emotion=user_emotion
         )
         
-        # 리포트 텍스트를 별도로 저장 (나중에 리포트 생성 시 사용)
-        report_data.image_metadata['report_text'] = str(report_text)
+        # 20년 경력 상담전문가의 FinalAnswer를 보고서로 저장
+        report_data.image_metadata['professional_report'] = str(conclusion_result)
         
         return report_data
     
@@ -241,7 +224,7 @@ class AIService:
 
 ## 4. 상담 시 고려사항
 
-{report_data.image_metadata.get('report_text', '리포트 텍스트가 생성되지 않았습니다.')}
+{report_data.image_metadata.get('professional_report', '20년 경력 상담전문가의 보고서가 생성되지 않았습니다.')}
 
 ---
 

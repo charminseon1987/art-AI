@@ -5,7 +5,7 @@ import { Send, MessageSquare } from "lucide-react";
 
 interface ChatInterfaceProps {
   reportData: any;
-  onComplete: (responses: any[]) => void;
+  onComplete: (responses: any[], userInfo?: { age?: string; gender?: string }) => void;
 }
 
 export default function ChatInterface({ reportData, onComplete }: ChatInterfaceProps) {
@@ -13,9 +13,76 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
   const [responses, setResponses] = useState<Array<{ question: string; answer: string }>>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
 
-  // AI가 생성한 상담 질문 우선 사용, 없으면 기본 질문 사용
-  const aiGeneratedQuestions = reportData?.reflection_questions?.questions || [];
+  // AI가 생성한 상담 질문 우선 사용 (다양한 데이터 구조 지원)
+  // API 응답 구조: { report: { reflection_questions: { questions: [...] } } }
+  const aiGeneratedQuestions = 
+    reportData?.report?.reflection_questions?.questions || 
+    reportData?.reflection_questions?.questions || 
+    [];
+  
+  // 디버깅용 로그 (개발 환경에서만)
+  if (process.env.NODE_ENV === 'development') {
+    console.log("ChatInterface - reportData:", reportData);
+    console.log("ChatInterface - aiGeneratedQuestions:", aiGeneratedQuestions);
+    console.log("ChatInterface - questions count:", aiGeneratedQuestions.length);
+  }
+  
+  // 상담 질문 세트 (터미널에서 제공된 질문들)
+  const counselingQuestions = [
+    {
+      id: "Q1",
+      text: "당신이 사용한 다양한 색상 중에서 특히 어떤 색상이 이 그림에서 특별한 의미를 가진다고 느끼시나요?",
+      type: "color"
+    },
+    {
+      id: "Q2",
+      text: "사각형, 삼각형, 둥글고 풍성한 형태 등 여러 형태가 함께 어우러진 모습에서 어떤 감정을 느끼셨나요?",
+      type: "shape"
+    },
+    {
+      id: "Q3",
+      text: "왼쪽에 위치한 인물과 고양이의 배치가 그림에서 어떤 이야기를 전달한다고 생각하시나요?",
+      type: "composition"
+    },
+    {
+      id: "Q4",
+      text: "그림을 통해 느끼는 행복과 따뜻함은 어떤 경험에서 비롯된 것인지 이야기해주실 수 있나요?",
+      type: "emotion"
+    },
+    {
+      id: "Q5",
+      text: "그림의 전체적인 밝은 분위기가 당신의 기분이나 상태에 어떤 영향을 미쳤다고 생각하시나요?",
+      type: "mood"
+    },
+    {
+      id: "Q6",
+      text: "상징적으로 표현된 손을 잡고 있는 인물들의 모습이 어떤 의미를 지니고 있다고 생각하시나요?",
+      type: "symbol"
+    },
+    {
+      id: "Q7",
+      text: "가정과 안정성을 상징하는 집과 나무는 당신의 삶에서 어떤 장소나 순간과 연결된다고 느끼시나요?",
+      type: "connection"
+    },
+    {
+      id: "Q8",
+      text: "이 그림을 그릴 때의 경험은 어떤 감정이나 생각을 불러일으켰나요?",
+      type: "experience"
+    },
+    {
+      id: "Q9",
+      text: "그림을 그리는 과정에서 느꼈던 자유로움은 어떤 방식으로 표현되었나요?",
+      type: "freedom"
+    },
+    {
+      id: "Q10",
+      text: "마지막으로, 이 그림을 그리고 나서 어떤 변화나 깨달음이 있었는지 나눠주실 수 있나요?",
+      type: "reflection"
+    }
+  ];
   
   // 고정 질문 세트 (명세에 따른 - AI 질문이 없을 때 사용)
   const fixedQuestions = [
@@ -46,19 +113,11 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
     }
   ];
 
-  // 사용할 질문 목록 결정 (AI 질문이 있으면 사용, 없으면 기본 질문)
-  const questionsToUse = aiGeneratedQuestions.length > 0 
-    ? aiGeneratedQuestions.slice(0, 5).map((q: string, idx: number) => ({
-        id: `AI-Q${idx + 1}`,
-        text: q,
-        type: idx === 0 ? "icebreaking" : idx < 3 ? "exploration" : "story"
-      }))
-    : fixedQuestions;
+  // 사용할 질문 목록 결정 (처음 4개만 사용 - 기본 질문 사용)
+  const questionsToUse = fixedQuestions.slice(0, 4);
 
-  // 최대 질문 수 (AI 질문이 있으면 최대 5개, 기본 질문은 4개 필수)
-  const maxQuestions = aiGeneratedQuestions.length > 0 
-    ? Math.min(aiGeneratedQuestions.length, 5) // AI 질문이 있으면 최대 5개
-    : 4; // 기본 질문은 4개 필수
+  // 최대 질문 수 (처음 4개만 사용)
+  const maxQuestions = 4;
 
   const getCurrentQuestion = () => {
     if (currentQuestionIndex < maxQuestions) {
@@ -102,7 +161,10 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
     setIsCompleting(true);
     // Chat 종료 멘트 표시 후 완료
     setTimeout(() => {
-      onComplete(finalResponses);
+      onComplete(finalResponses, {
+        age: age || undefined,
+        gender: gender || undefined
+      });
     }, 2000);
   };
 
@@ -158,24 +220,45 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
         </div>
       )}
 
+      {/* 나이/성별 입력 (첫 질문 전에만 표시) */}
+      {currentQuestionIndex === 0 && responses.length === 0 && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mb-4">
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">기본 정보 입력</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                나이 (선택사항)
+              </label>
+              <input
+                type="text"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="예: 7세, 초등 1학년"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                성별 (선택사항)
+              </label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white text-sm"
+              >
+                <option value="">선택 안함</option>
+                <option value="남">남</option>
+                <option value="여">여</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 현재 질문 */}
       {currentQuestion && !isCompleting && (
         <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-blue-600" />
-            </div>
-            <div className="flex-1 bg-gray-100 rounded-lg p-4 border border-gray-200">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-gray-900 font-medium flex-1">{currentQuestion.text}</p>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  ({currentQuestionIndex + 1}/{maxQuestions})
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 보호자 안내 문구 (첫 질문일 때만) */}
+          {/* 보호자 안내 문구 (첫 질문일 때만) - 위로 이동 */}
           {currentQuestionIndex === 0 && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-lg text-sm text-gray-700">
               <p className="whitespace-pre-line">
@@ -185,6 +268,21 @@ export default function ChatInterface({ reportData, onComplete }: ChatInterfaceP
               </p>
             </div>
           )}
+
+          {/* 질문 - 아래로 이동 */}
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1 bg-gray-100 rounded-lg p-4 border border-gray-200">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-gray-900 font-medium flex-1 whitespace-pre-line">{currentQuestion.text}</p>
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  ({currentQuestionIndex + 1}/{maxQuestions})
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* 답변 입력 */}
           <div className="flex gap-2">

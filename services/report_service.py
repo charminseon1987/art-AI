@@ -104,6 +104,154 @@ class ReportService:
         reports.sort(key=lambda x: x.created_at, reverse=True)
         return reports
     
+    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트") -> bytes:
+        """마크다운 내용을 PDF로 변환"""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from io import BytesIO
+        import re
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                               topMargin=0.75*inch, 
+                               bottomMargin=0.75*inch,
+                               leftMargin=0.75*inch,
+                               rightMargin=0.75*inch)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # 한글 폰트 설정 (시스템 기본 폰트 사용)
+        try:
+            # macOS의 경우
+            pdfmetrics.registerFont(TTFont('NanumGothic', '/System/Library/Fonts/Supplemental/AppleGothic.ttf'))
+            font_name = 'NanumGothic'
+        except:
+            try:
+                # Linux의 경우
+                pdfmetrics.registerFont(TTFont('NanumGothic', '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'))
+                font_name = 'NanumGothic'
+            except:
+                font_name = 'Helvetica'  # 기본 폰트 사용
+        
+        # 제목 스타일
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=20,
+            textColor='#2c3e50',
+            spaceAfter=20,
+            alignment=TA_CENTER,
+            fontName=font_name
+        )
+        
+        # 섹션 제목 스타일 (##)
+        heading2_style = ParagraphStyle(
+            'CustomHeading2',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor='#34495e',
+            spaceAfter=12,
+            spaceBefore=20,
+            fontName=font_name,
+            leading=20
+        )
+        
+        # 소제목 스타일 (###)
+        heading3_style = ParagraphStyle(
+            'CustomHeading3',
+            parent=styles['Heading3'],
+            fontSize=14,
+            textColor='#34495e',
+            spaceAfter=8,
+            spaceBefore=12,
+            fontName=font_name,
+            leading=18
+        )
+        
+        # 본문 스타일
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=11,
+            leading=16,
+            alignment=TA_JUSTIFY,
+            fontName=font_name
+        )
+        
+        # 볼드 스타일
+        bold_style = ParagraphStyle(
+            'CustomBold',
+            parent=normal_style,
+            fontName=font_name,
+            fontSize=11,
+            leading=16
+        )
+        
+        # 제목 추가
+        story.append(Paragraph(title, title_style))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # 마크다운 파싱
+        lines = markdown_content.split('\n')
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            if not line:
+                story.append(Spacer(1, 0.1*inch))
+                i += 1
+                continue
+            
+            # ## 제목 (섹션)
+            if line.startswith('## '):
+                text = line[3:].strip()
+                story.append(Paragraph(text, heading2_style))
+            
+            # ### 제목 (소제목)
+            elif line.startswith('### '):
+                text = line[4:].strip()
+                story.append(Paragraph(text, heading3_style))
+            
+            # 구분선
+            elif line.startswith('---'):
+                story.append(Spacer(1, 0.2*inch))
+            
+            # 리스트 항목 (- 또는 •)
+            elif line.startswith('- ') or line.startswith('• '):
+                text = line[2:].strip()
+                # 볼드 처리
+                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                story.append(Paragraph(f"• {text}", normal_style))
+            
+            # 번호 리스트
+            elif re.match(r'^\d+\.\s', line):
+                text = re.sub(r'^\d+\.\s', '', line)
+                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                story.append(Paragraph(f"• {text}", normal_style))
+            
+            # 일반 텍스트
+            else:
+                # 마크다운 포맷팅 처리
+                text = line
+                # 볼드 처리
+                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                # 이탤릭 처리
+                text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
+                
+                if text.strip():
+                    story.append(Paragraph(text, normal_style))
+            
+            i += 1
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
+    
     def generate_pdf_report(self, report_data: ReportData, ai_service: 'AIService') -> bytes:
         """PDF 리포트 생성"""
         from reportlab.lib.pagesizes import letter, A4

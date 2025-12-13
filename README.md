@@ -17,34 +17,41 @@
 ## 🤖 AI 에이전트 구조
 
 ### Agent A. Image Observation Agent (핵심)
+
 - 그림을 객관적으로 관찰하고 구조화된 정보 추출
 - 색상, 형태, 구성, 세부사항 분석
 
 ### Agent B. Emotional Language Agent
+
 - 그림에서 나타나는 감정적 표현과 상징 분석
 - 감정적 톤과 강도 수준 식별
 
 ### Agent C. Reflection Question Agent
+
 - 상담을 위한 반성 질문 생성
 - 개방적이고 탐색적인 질문 제공
 
 ### Agent D. Report Composer Agent
+
 - 모든 분석 결과를 종합하여 상담용 리포트 작성
 - 구조화된 리포트 생성
 
 ## 📋 MVP 기능 목록
 
 ### 사용자 기능
+
 - ✅ 그림 업로드
 - ✅ 간단 감정 선택 (선택사항)
 - ✅ 리포트 보기 / 다운로드
 
 ### AI 기능
+
 - ✅ 이미지 분석
 - ✅ 질문 생성
 - ✅ 리포트 자동 생성
 
 ### 관리자/상담사 기능
+
 - ✅ 리포트 수정
 - ✅ 코멘트 추가
 
@@ -70,6 +77,7 @@ cp .env.example .env
 ```
 
 또는 Streamlit secrets를 사용할 수 있습니다:
+
 - `.streamlit/secrets.toml` 파일 생성
 - `OPENAI_API_KEY = "your_key_here"` 추가
 
@@ -147,4 +155,3 @@ AI는 해석이나 진단을 하지 않고, 객관적인 관찰과 구조화를 
 ## 🤝 기여
 
 이슈와 풀 리퀘스트를 환영합니다!
-

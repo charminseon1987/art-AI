@@ -10,11 +10,13 @@ export default function Home() {
           대전 유아 · 초등 연계 개인 미술 수업
         </h1>
         <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed max-w-2xl mx-auto">
-          5살부터 시작해<br />
-          초등, 중·고등까지 함께 성장해온<br />
+          5살부터 시작해
+          <br />
+          초등, 중·고등까지 함께 성장해온
+          <br />
           미술 선생님의 개인 수업입니다.
         </p>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
           <Link
             href="/counseling"
@@ -63,7 +65,7 @@ export default function Home() {
           <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">
             이 수업이 다른 이유
           </h3>
-          
+
           <div className="bg-white p-8 rounded-lg border-l-4 border-blue-500 shadow-md">
             <h4 className="text-2xl font-bold text-gray-800 mb-6">
               아이에게 "왜 이렇게 그렸어?"라고 묻지 않습니다
@@ -109,4 +111,3 @@ export default function Home() {
     </div>
   );
 }
-
