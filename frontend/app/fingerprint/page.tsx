@@ -10,6 +10,9 @@ import {
   CheckCircle,
   FileText,
   Image as ImageIcon,
+  X,
+  Send,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -41,6 +44,11 @@ export default function FingerprintPage() {
   const [fingerprintData, setFingerprintData] =
     useState<FingerprintData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string; timestamp: Date }>
+  >([]);
+  const [inputMessage, setInputMessage] = useState("");
 
   useEffect(() => {
     // 스크래핑 서비스를 통해 데이터 가져오기
@@ -58,6 +66,61 @@ export default function FingerprintPage() {
         setLoading(false);
       });
   }, []);
+
+  // 채팅 초기 메시지
+  useEffect(() => {
+    if (isChatOpen && messages.length === 0) {
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "안녕하세요! 지문상담에 관심을 가져주셔서 감사합니다. 궁금한 점이 있으시면 언제든지 문의해주세요. 😊",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  }, [isChatOpen, messages.length]);
+
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return;
+
+    const userMessage = {
+      role: "user" as const,
+      content: inputMessage,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+
+    // 간단한 자동 응답 (실제로는 API 호출)
+    setTimeout(() => {
+      const responses = [
+        "지문상담에 대해 궁금하신 점이 있으시군요! 자세한 내용은 상담 페이지에서 확인하실 수 있습니다.",
+        "지문 분석은 하워드 가드너의 다중지능 이론을 바탕으로 진행됩니다.",
+        "더 자세한 상담이 필요하시면 카카오톡이나 네이버 예약을 통해 문의해주세요.",
+      ];
+      const randomResponse =
+        responses[Math.floor(Math.random() * responses.length)];
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: randomResponse,
+          timestamp: new Date(),
+        },
+      ]);
+    }, 1000);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -438,12 +501,12 @@ export default function FingerprintPage() {
             하워드 가드너 다중지능 이론 기반 지문 분석 상담
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/consultation"
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold transition-colors"
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="bg-white text-blue-600 hover:bg-gray-100 hover:shadow-xl px-8 py-3 rounded-lg font-semibold transition-all duration-300 shadow-md hover:scale-105"
             >
               지문상담 문의하기
-            </Link>
+            </button>
             <Link
               href="/consultation"
               className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors"
@@ -453,6 +516,95 @@ export default function FingerprintPage() {
           </div>
         </div>
       </div>
+
+      {/* 채팅 모달 */}
+      {isChatOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md h-[600px] flex flex-col">
+            {/* 채팅 헤더 */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                <h3 className="font-semibold text-lg">지문상담 문의</h3>
+              </div>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 채팅 메시지 영역 */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {messages.map((message, idx) => (
+                <div
+                  key={idx}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-lg p-3 ${
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-800 shadow-sm"
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        message.role === "user"
+                          ? "text-blue-100"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {message.timestamp.toLocaleTimeString("ko-KR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 입력 영역 */}
+            <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="메시지를 입력하세요..."
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim()}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                더 자세한 상담은{" "}
+                <Link
+                  href="/consultation"
+                  className="text-blue-600 hover:underline"
+                  onClick={() => setIsChatOpen(false)}
+                >
+                  상담 페이지
+                </Link>
+                에서 확인하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
