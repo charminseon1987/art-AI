@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // 관리자 비밀번호 (환경 변수에서 가져오거나 기본값 사용)
-const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD || "admin123"; // 기본 비밀번호, 실제 운영 시 환경 변수로 변경 필요
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123"; // 기본 비밀번호, 실제 운영 시 환경 변수로 변경 필요
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +16,9 @@ export async function POST(request: NextRequest) {
 
     if (password === ADMIN_PASSWORD) {
       // 간단한 토큰 생성 (실제 운영 시 JWT 등 사용 권장)
-      const token = `admin_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const token = `admin_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(7)}`;
 
       return NextResponse.json({
         success: true,
@@ -38,4 +39,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

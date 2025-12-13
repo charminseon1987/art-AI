@@ -66,7 +66,7 @@ with st.sidebar:
     
     page = st.radio(
         "메뉴",
-        ["🏠 홈", "🎨 미술 수업", "💬 그림 상담 (AI)", "📞 상담·수업 안내", "💌 문의"],
+        ["🏠 홈", "🎨 미술 수업", "💬 그림 상담 (AI)", "🔍 지문상담", "📞 상담·수업 안내", "💌 문의"],
         label_visibility="collapsed"
     )
     
@@ -461,6 +461,156 @@ elif page == "💬 그림 상담 (AI)":
             본 그림 상담 리포트는 심리 진단이나 치료를 목적으로 하지 않으며,
             미술 수업과 상담을 돕기 위한 참고 자료입니다.
             """)
+
+elif page == "🔍 지문상담":
+    # 하워드 가드너 정보 스크래핑
+    scraping_service = ArtTherapyScrapingService()
+    gardner_info = scraping_service.scrape_howard_gardner_info()
+    
+    st.markdown("""
+    <div style='text-align: center; padding: 30px 20px;'>
+        <h1 style='font-size: 2.2em; color: #2c3e50; margin-bottom: 10px;'>
+            하워드 가드너 지문상담
+        </h1>
+        <h2 style='font-size: 1.5em; color: #34495e; margin-bottom: 30px;'>
+            다중지능 이론 기반 아이 맞춤 상담
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # 하워드 가드너 이론 개요
+    st.markdown(f"### {gardner_info['theory_overview']['title']}")
+    st.markdown(f"""
+    <div style='background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 20px;'>
+        <p style='font-size: 1.1em; line-height: 1.8; color: #34495e;'>
+            {gardner_info['theory_overview']['description']}
+        </p>
+        <ul style='font-size: 1.05em; line-height: 2; color: #34495e; margin-top: 15px; padding-left: 20px;'>
+    """, unsafe_allow_html=True)
+    for point in gardner_info['theory_overview']['key_points']:
+        st.markdown(f"<li>{point}</li>", unsafe_allow_html=True)
+    st.markdown("</ul></div>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.markdown("### 지문상담이란?")
+    st.markdown("""
+    <div style='background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 20px;'>
+        <p style='font-size: 1.1em; line-height: 1.8; color: #34495e;'>
+            하워드 가드너(Howard Gardner)의 <strong>다중지능 이론</strong>을 바탕으로 한 지문 분석 상담입니다.
+        </p>
+        <p style='font-size: 1.1em; line-height: 1.8; color: #34495e; margin-top: 15px;'>
+            아이의 손가락 지문을 분석하여 8가지 지능 유형(언어지능, 논리수학지능, 공간지능, 음악지능, 
+            신체운동지능, 대인지능, 자기성찰지능, 자연지능) 중 어떤 영역이 발달되어 있는지 파악하고, 
+            아이에게 맞는 학습 방법과 진로 방향을 제안합니다.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # 다중지능 이론의 장점
+    st.markdown(f"### {gardner_info['benefits']['title']}")
+    for benefit_item in gardner_info['benefits']['points']:
+        st.markdown(f"""
+        <div style='background-color: #fff; padding: 20px; border-left: 4px solid #3498db; border-radius: 5px; margin-bottom: 15px;'>
+            <h4 style='color: #2c3e50; margin-bottom: 10px;'>✨ {benefit_item['benefit']}</h4>
+            <p style='color: #34495e; line-height: 1.6;'>
+                {benefit_item['description']}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # 8가지 지능 유형
+    st.markdown("### 8가지 지능 유형 및 지문별 특징")
+    for intelligence_name, intelligence_info in gardner_info['eight_intelligences'].items():
+        with st.expander(f"🧠 {intelligence_name}", expanded=False):
+            st.markdown(f"""
+            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 15px;'>
+                <p style='font-size: 1.05em; line-height: 1.8; color: #34495e; margin-bottom: 15px;'>
+                    <strong>설명:</strong> {intelligence_info['description']}
+                </p>
+                <p style='font-size: 1.05em; line-height: 1.8; color: #34495e; margin-bottom: 15px;'>
+                    <strong>특징:</strong> {', '.join(intelligence_info['characteristics'])}
+                </p>
+                <p style='font-size: 1.05em; line-height: 1.8; color: #e74c3c; margin-bottom: 15px;'>
+                    <strong>🔍 지문 특징:</strong> {intelligence_info['fingerprint_features']}
+                </p>
+                <p style='font-size: 1.05em; line-height: 1.8; color: #27ae60;'>
+                    <strong>발달 방법:</strong> {intelligence_info['development']}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # 지문 분석 방법
+    st.markdown("### 지문 분석 방법")
+    st.markdown(f"""
+    <div style='background-color: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 20px;'>
+        <p style='font-size: 1.1em; line-height: 1.8; color: #34495e; margin-bottom: 20px;'>
+            {gardner_info['fingerprint_analysis']['overview']}
+        </p>
+        <h4 style='color: #2c3e50; margin-bottom: 15px;'>지문 패턴 유형</h4>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    for pattern_name, pattern_info in gardner_info['fingerprint_analysis']['fingerprint_types'].items():
+        st.markdown(f"""
+        <div style='background-color: #fff; padding: 20px; border-left: 4px solid #9b59b6; border-radius: 5px; margin-bottom: 15px;'>
+            <h4 style='color: #2c3e50; margin-bottom: 10px;'>🔸 {pattern_name}</h4>
+            <p style='color: #34495e; line-height: 1.6; margin-bottom: 10px;'>
+                <strong>설명:</strong> {pattern_info['description']}
+            </p>
+            <p style='color: #34495e; line-height: 1.6; margin-bottom: 10px;'>
+                <strong>관련 지능:</strong> {', '.join(pattern_info['associated_intelligences'])}
+            </p>
+            <p style='color: #34495e; line-height: 1.6;'>
+                <strong>특성:</strong> {pattern_info['characteristics']}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.markdown("### 지문 분석 프로세스")
+    st.markdown(f"""
+    <div style='background-color: #f8f9fa; padding: 25px; border-radius: 10px;'>
+        <ol style='font-size: 1.1em; line-height: 2.5; color: #34495e; padding-left: 20px;'>
+    """, unsafe_allow_html=True)
+    for step in gardner_info['fingerprint_analysis']['analysis_method']['steps']:
+        st.markdown(f"<li>{step}</li>", unsafe_allow_html=True)
+    st.markdown(f"""
+        </ol>
+        <p style='font-size: 1em; color: #e74c3c; margin-top: 20px; font-weight: bold;'>
+            ⚠️ {gardner_info['fingerprint_analysis']['analysis_method']['importance']}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.markdown("### 지문상담 신청")
+    st.markdown("""
+    <div style='text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; margin-bottom: 20px;'>
+        <h3 style='margin-bottom: 20px;'>지문상담으로 우리 아이의 강점을 발견하세요</h3>
+        <p style='font-size: 1.1em; margin-bottom: 30px;'>
+            하워드 가드너 다중지능 이론 기반 지문 분석 상담
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.button("📞 지문상담 문의하기", use_container_width=True, type="primary", key="fingerprint_consult")
+    with col2:
+        if st.button("📞 상담·수업 안내로 이동", use_container_width=True, key="fingerprint_info"):
+            page = "📞 상담·수업 안내"
+            st.rerun()
 
 elif page == "📞 상담·수업 안내":
     st.markdown("""

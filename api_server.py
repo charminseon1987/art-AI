@@ -602,6 +602,36 @@ async def delete_class_work(
 
 # 정적 파일 서빙 (이미지)
 
+@app.get("/api/fingerprint-data")
+async def get_fingerprint_data():
+    """지문상담 관련 데이터 반환"""
+    try:
+        from services.scraping_service import ArtTherapyScrapingService
+        scraping_service = ArtTherapyScrapingService()
+        gardner_info = scraping_service.scrape_howard_gardner_info()
+        blog_content = scraping_service.scrape_fingerprint_blog()
+        
+        # 필요한 데이터만 추출
+        fingerprint_data = {
+            "thumb_personality": gardner_info.get("thumb_personality"),
+            "fingerprint_characteristics": gardner_info.get("fingerprint_characteristics"),
+            "report_example": gardner_info.get("report_example"),
+            "blog_content": blog_content,
+        }
+        
+        return {
+            "success": True,
+            "data": fingerprint_data
+        }
+    except Exception as e:
+        import traceback
+        print(f"지문 데이터 로드 오류: {traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 @app.get("/uploads/class_images/{filename:path}")
 async def get_class_image(filename: str):
     """수업 작품 이미지 서빙"""
