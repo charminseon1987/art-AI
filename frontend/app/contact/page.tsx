@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MessageCircle, Calendar, Send } from "lucide-react";
+import { KAKAO_CHANNEL_URL, NAVER_BOOKING_URL } from "@/lib/constants";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -35,9 +36,14 @@ export default function ContactPage() {
           <div className="bg-white p-6 rounded-lg shadow-md text-center">
             <MessageCircle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-800 mb-2">카카오채널</h3>
-            <button className="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-3 rounded-lg font-semibold transition-colors">
+            <a
+              href={KAKAO_CHANNEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
               카카오톡으로 문의
-            </button>
+            </a>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md text-center">
@@ -45,9 +51,14 @@ export default function ContactPage() {
             <h3 className="text-xl font-bold text-gray-800 mb-2">
               네이버 예약
             </h3>
-            <button className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+            <a
+              href={NAVER_BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
               네이버 예약하기
-            </button>
+            </a>
           </div>
         </div>
 

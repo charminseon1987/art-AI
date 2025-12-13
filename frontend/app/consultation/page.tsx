@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle, MessageCircle } from "lucide-react";
+import { KAKAO_CHANNEL_URL, NAVER_BOOKING_URL } from "@/lib/constants";
 
 export default function ConsultationPage() {
   const steps = [
@@ -42,14 +43,24 @@ export default function ConsultationPage() {
             문의하기
           </h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-colors">
+            <a
+              href={KAKAO_CHANNEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-colors"
+            >
               <MessageCircle className="w-5 h-5" />
               카카오톡으로 문의
-            </button>
-            <button className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg font-semibold transition-colors">
+            </a>
+            <a
+              href={NAVER_BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg font-semibold transition-colors"
+            >
               <MessageCircle className="w-5 h-5" />
               네이버 예약하기
-            </button>
+            </a>
           </div>
         </div>
 

@@ -17,13 +17,20 @@ export async function GET(
     const pythonBackendUrl =
       process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
+    // Authorization 헤더 전달
+    const authorization = request.headers.get("authorization");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (authorization) {
+      headers["Authorization"] = authorization;
+    }
+
     const response = await fetch(
       `${pythonBackendUrl}/api/reports/${reportId}`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
       }
     );
 

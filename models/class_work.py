@@ -13,6 +13,7 @@ class ClassWork(BaseModel):
     title: str  # 작품 제목
     images: List[str] = []  # 상세 페이지 이미지 URL 리스트
     description: Optional[str] = None  # 설명
+    category: int = Field(default=0, description="카테고리: 0=유아, 1=초등, 2=중등, 3=애니")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 

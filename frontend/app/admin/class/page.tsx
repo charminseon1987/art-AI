@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -13,7 +13,26 @@ export default function AdminClassWorkPage() {
   const [ageRange, setAgeRange] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState(0); // 0=유아, 1=초등, 2=중등, 3=애니
   const [uploading, setUploading] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    // 관리자 인증 확인
+    const checkAuth = () => {
+      const isAuthenticated =
+        sessionStorage.getItem("admin_authenticated") === "true";
+      if (!isAuthenticated) {
+        router.push("/admin/login");
+      } else {
+        setAuthenticated(true);
+      }
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [router]);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,6 +78,7 @@ export default function AdminClassWorkPage() {
       formData.append("thumbnail", thumbnail);
       formData.append("age_range", ageRange);
       formData.append("title", title);
+      formData.append("category", category.toString());
       if (description) {
         formData.append("description", description);
       }
@@ -68,8 +88,15 @@ export default function AdminClassWorkPage() {
         formData.append("images", img);
       });
 
+      const token = sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/class-works", {
         method: "POST",
+        headers,
         body: formData,
       });
 
@@ -97,6 +124,21 @@ export default function AdminClassWorkPage() {
       setUploading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
@@ -145,6 +187,24 @@ export default function AdminClassWorkPage() {
                 />
               </label>
             )}
+          </div>
+
+          {/* 카테고리 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              카테고리 <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(Number(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white"
+              required
+            >
+              <option value={0}>유아</option>
+              <option value={1}>초등</option>
+              <option value={2}>중등</option>
+              <option value={3}>애니</option>
+            </select>
           </div>
 
           {/* 나이 */}

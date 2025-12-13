@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Download,
@@ -8,6 +9,7 @@ import {
   Search,
   Filter,
   Image as ImageIcon,
+  LogOut,
 } from "lucide-react";
 import {
   getReports,
@@ -24,6 +26,7 @@ interface Report {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -33,10 +36,25 @@ export default function AdminPage() {
   >({});
   const [savingAnswers, setSavingAnswers] = useState(false);
   const [answersSaved, setAnswersSaved] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    loadReports();
-  }, []);
+    // 관리자 인증 확인
+    const checkAuth = () => {
+      const isAuthenticated =
+        sessionStorage.getItem("admin_authenticated") === "true";
+      if (!isAuthenticated) {
+        router.push("/admin/login");
+      } else {
+        setAuthenticated(true);
+        loadReports();
+      }
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [router]);
 
   const loadReports = async () => {
     try {
@@ -95,6 +113,27 @@ export default function AdminPage() {
     );
   });
 
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_authenticated");
+    sessionStorage.removeItem("admin_token");
+    router.push("/admin/login");
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -122,12 +161,21 @@ export default function AdminPage() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800">리포트 목록</h2>
-                <button
-                  onClick={loadReports}
-                  className="text-blue-600 hover:text-blue-700 text-sm"
-                >
-                  새로고침
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadReports}
+                    className="text-blue-600 hover:text-blue-700 text-sm"
+                  >
+                    새로고침
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    로그아웃
+                  </button>
+                </div>
               </div>
 
               {/* 검색 */}
