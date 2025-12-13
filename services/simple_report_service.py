@@ -18,7 +18,7 @@ class SimpleReportService:
         age: str = None,
         gender: str = None
     ) -> str:
-        """사용자용 간단 리포트 생성 (20년 경력 전문가 리포트 형식)"""
+        """사용자용 간단 리포트 생성 (전문가 리포트 형식)"""
         
         # 기본 정보 섹션
         user_info_section = ""
@@ -84,7 +84,10 @@ class SimpleReportService:
 #                 report += f"**질문 {idx}**: {response['question']}\n\n"
 #                 report += f"**답변**: {response['answer']}\n\n"
         
-        # 20년 경력 상담전문가의 FinalAnswer (터미널 출력 형식) 사용
+        # 리포트 초기화
+        report = user_info_section
+        
+        # 상담전문가의 FinalAnswer (터미널 출력 형식) 사용
         professional_report = report_data.image_metadata.get('professional_report', '')
         
         # professional_report가 있으면 터미널 출력 형식을 그대로 사용

@@ -144,6 +144,58 @@ async def generate_report(
                 content={"error": "Chat 응답 형식이 올바르지 않습니다."}
             )
         
+        # 사용자가 기본 질문에 답변한 경우, 종합결론을 업데이트하여 사용자 답변을 반영
+        if chat_responses_list:
+            try:
+                from agents.conclusion_agent import ConclusionAgent
+                from langchain_openai import ChatOpenAI
+                from services.scraping_service import ArtTherapyScrapingService
+                import os
+                
+                # ConclusionAgent 생성 (참고 자료 포함)
+                llm = ChatOpenAI(
+                    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                    temperature=0.7
+                )
+                scraping_service = ArtTherapyScrapingService()
+                reference_material = scraping_service.get_reference_material()
+                conclusion_agent = ConclusionAgent(llm, reference_material=reference_material)
+                
+                # 사용자 답변을 포함하여 종합결론 재생성
+                conclusion_task = conclusion_agent.create_conclusion_task(
+                    report_data.observation,
+                    report_data.emotional_language,
+                    report_data.reflection_questions,
+                    report_data.user_emotion,
+                    chat_responses=chat_responses_list  # 사용자의 기본 질문 답변 포함
+                )
+                
+                from crewai import Crew, Process
+                conclusion_crew = Crew(
+                    agents=[conclusion_agent.agent],
+                    tasks=[conclusion_task],
+                    process=Process.sequential,
+                    verbose=True
+                )
+                conclusion_result = conclusion_crew.kickoff()
+                
+                # 업데이트된 professional_report 저장
+                report_data.image_metadata = report_data.image_metadata or {}
+                report_data.image_metadata["professional_report"] = str(conclusion_result)
+                
+                # professional_conclusion도 업데이트 시도
+                try:
+                    updated_conclusion = conclusion_agent.parse_conclusion(str(conclusion_result))
+                    if updated_conclusion.professional_assessment:
+                        report_data.professional_conclusion = updated_conclusion
+                except:
+                    pass  # 파싱 실패 시 기존 conclusion 유지
+                    
+            except Exception as e:
+                import traceback
+                print(f"종합결론 업데이트 오류 (계속 진행): {traceback.format_exc()}")
+                # 오류 발생 시 기존 리포트 사용
+        
         # 간단 리포트 생성 (미술 심리 전문가 리포트 - 최종본)
         simple_report = simple_report_service.generate_simple_report(
             report_data,
@@ -169,9 +221,12 @@ async def generate_report(
             "simple_report": simple_report,
         }
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"리포트 생성 오류: {error_trace}")
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content={"error": f"리포트 생성 실패: {str(e)}"}
         )
 
 
@@ -455,27 +510,58 @@ async def generate_pdf_report(report_id: str):
         
         # 간단 리포트 생성 (미술 심리 전문가 리포트)
         chat_responses = report_data.image_metadata.get("chat_responses", [])
-        simple_report = simple_report_service.generate_simple_report(
-            report_data,
-            chat_responses
-        )
         
-        # PDF 생성
-        pdf_content = report_service.generate_pdf_from_markdown(
-            simple_report,
-            title="그림 관찰 기반 상담 참고 리포트"
-        )
+        try:
+            simple_report = simple_report_service.generate_simple_report(
+                report_data,
+                chat_responses
+            )
+        except Exception as e:
+            import traceback
+            print(f"간단 리포트 생성 오류: {traceback.format_exc()}")
+            raise Exception(f"리포트 생성 실패: {str(e)}")
         
-        # 파일명 생성
+        # PDF 생성 (이미지 포함)
+        try:
+            # base64 이미지 가져오기
+            image_base64 = report_data.image_metadata.get("base64", None)
+            
+            pdf_content = report_service.generate_pdf_from_markdown(
+                simple_report,
+                title="그림 관찰 기반 상담 참고 리포트",
+                image_base64=image_base64
+            )
+        except Exception as e:
+            import traceback
+            print(f"PDF 생성 오류: {traceback.format_exc()}")
+            raise Exception(f"PDF 생성 실패: {str(e)}")
+        
+        # 파일명 생성 (한글 파일명 인코딩 처리)
         date_str = report_data.created_at.strftime('%Y%m%d_%H%M%S')
         report_id_short = report_data.id[:8] if report_data.id else "unknown"
-        filename = f"그림상담보고서_{date_str}_{report_id_short}.pdf"
+        filename_kr = f"그림상담보고서_{date_str}_{report_id_short}.pdf"
+        filename_en = f"art_counseling_report_{date_str}_{report_id_short}.pdf"
         
-        return Response(
-            content=pdf_content,
+        # RFC 5987 형식으로 한글 파일명 인코딩
+        from urllib.parse import quote
+        # UTF-8로 인코딩한 후 percent-encoding
+        filename_encoded = quote(filename_kr, safe='', encoding='utf-8')
+        
+        # Content-Disposition 헤더 생성 (한글 파일명 지원)
+        # filename* 부분은 이미 percent-encoded 되어 있어 ASCII 문자만 포함
+        content_disposition = f'attachment; filename="{filename_en}"; filename*=UTF-8\'\'{filename_encoded}'
+        
+        # StreamingResponse를 사용하여 헤더 인코딩 문제 회피
+        from fastapi.responses import StreamingResponse
+        from io import BytesIO
+        
+        pdf_stream = BytesIO(pdf_content)
+        
+        return StreamingResponse(
+            pdf_stream,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
+                "Content-Disposition": content_disposition
             }
         )
     except Exception as e:

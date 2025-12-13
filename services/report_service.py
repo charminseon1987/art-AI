@@ -104,17 +104,19 @@ class ReportService:
         reports.sort(key=lambda x: x.created_at, reverse=True)
         return reports
     
-    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트") -> bytes:
+    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트", image_base64: str = None) -> bytes:
         """마크다운 내용을 PDF로 변환"""
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image
         from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         from io import BytesIO
         import re
+        import html
+        import base64
         
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, 
@@ -126,17 +128,24 @@ class ReportService:
         styles = getSampleStyleSheet()
         
         # 한글 폰트 설정 (시스템 기본 폰트 사용)
+        font_name = 'Helvetica'  # 기본값
         try:
             # macOS의 경우
             pdfmetrics.registerFont(TTFont('NanumGothic', '/System/Library/Fonts/Supplemental/AppleGothic.ttf'))
             font_name = 'NanumGothic'
-        except:
+        except Exception as e:
             try:
                 # Linux의 경우
                 pdfmetrics.registerFont(TTFont('NanumGothic', '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'))
                 font_name = 'NanumGothic'
-            except:
-                font_name = 'Helvetica'  # 기본 폰트 사용
+            except Exception as e2:
+                # Windows의 경우 (Malgun Gothic)
+                try:
+                    pdfmetrics.registerFont(TTFont('NanumGothic', 'C:/Windows/Fonts/malgun.ttf'))
+                    font_name = 'NanumGothic'
+                except Exception as e3:
+                    print(f"한글 폰트 로드 실패, 기본 폰트 사용: {e}, {e2}, {e3}")
+                    font_name = 'Helvetica'  # 기본 폰트 사용
         
         # 제목 스타일
         title_style = ParagraphStyle(
@@ -196,57 +205,117 @@ class ReportService:
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 0.3*inch))
         
+        # 업로드된 이미지 추가
+        if image_base64:
+            try:
+                # base64 이미지를 디코딩
+                image_data = base64.b64decode(image_base64)
+                image_buffer = BytesIO(image_data)
+                
+                # 이미지 크기 조정 (A4 페이지 너비에 맞춤)
+                try:
+                    from PIL import Image as PILImage
+                    pil_image = PILImage.open(image_buffer)
+                    img_width, img_height = pil_image.size
+                    
+                    # 최대 너비 설정 (A4 페이지 너비 - 마진)
+                    max_width = A4[0] - 1.5 * inch
+                    max_height = A4[1] * 0.4  # 페이지 높이의 40% 이하
+                    
+                    # 비율 유지하며 크기 조정
+                    ratio = min(max_width / img_width, max_height / img_height)
+                    if ratio < 1:
+                        new_width = img_width * ratio
+                        new_height = img_height * ratio
+                    else:
+                        new_width = img_width
+                        new_height = img_height
+                    
+                    # 이미지 버퍼 재생성
+                    image_buffer = BytesIO(image_data)
+                    pdf_image = Image(image_buffer, width=new_width, height=new_height)
+                except ImportError:
+                    # PIL이 없는 경우 기본 크기로 이미지 추가
+                    max_width = A4[0] - 1.5 * inch
+                    pdf_image = Image(image_buffer, width=max_width)
+                
+                # 이미지 제목
+                story.append(Paragraph("<b>업로드된 그림</b>", heading2_style))
+                story.append(Spacer(1, 0.1*inch))
+                
+                # 이미지 추가 (중앙 정렬)
+                story.append(pdf_image)
+                story.append(Spacer(1, 0.3*inch))
+            except Exception as e:
+                import traceback
+                print(f"PDF 이미지 추가 오류: {traceback.format_exc()}")
+                # 이미지 추가 실패 시 계속 진행
+        
         # 마크다운 파싱
         lines = markdown_content.split('\n')
         i = 0
         while i < len(lines):
-            line = lines[i].strip()
-            
-            if not line:
-                story.append(Spacer(1, 0.1*inch))
+            try:
+                line = lines[i].strip()
+                
+                if not line:
+                    story.append(Spacer(1, 0.1*inch))
+                    i += 1
+                    continue
+                
+                # HTML 태그 제거 (이미 포맷팅된 HTML이 있는 경우)
+                line = re.sub(r'<[^>]+>', '', line)
+                
+                # ## 제목 (섹션)
+                if line.startswith('## '):
+                    text = html.escape(line[3:].strip())
+                    story.append(Paragraph(text, heading2_style))
+                
+                # ### 제목 (소제목)
+                elif line.startswith('### '):
+                    text = html.escape(line[4:].strip())
+                    story.append(Paragraph(text, heading3_style))
+                
+                # 구분선
+                elif line.startswith('---'):
+                    story.append(Spacer(1, 0.2*inch))
+                
+                # 리스트 항목 (- 또는 •)
+                elif line.startswith('- ') or line.startswith('• '):
+                    text = line[2:].strip()
+                    # HTML 이스케이프
+                    text = html.escape(text)
+                    # 볼드 처리
+                    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                    story.append(Paragraph(f"• {text}", normal_style))
+                
+                # 번호 리스트
+                elif re.match(r'^\d+\.\s', line):
+                    text = re.sub(r'^\d+\.\s', '', line)
+                    text = html.escape(text)
+                    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                    story.append(Paragraph(f"• {text}", normal_style))
+                
+                # 일반 텍스트
+                else:
+                    # 마크다운 포맷팅 처리
+                    text = line
+                    # HTML 이스케이프
+                    text = html.escape(text)
+                    # 볼드 처리
+                    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                    # 이탤릭 처리
+                    text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
+                    
+                    if text.strip():
+                        story.append(Paragraph(text, normal_style))
+                
+                i += 1
+            except Exception as e:
+                # 오류 발생 시 해당 줄을 건너뛰고 계속 진행
+                print(f"PDF 생성 중 줄 {i} 처리 오류: {e}, 내용: {lines[i][:50] if i < len(lines) else 'N/A'}")
                 i += 1
                 continue
-            
-            # ## 제목 (섹션)
-            if line.startswith('## '):
-                text = line[3:].strip()
-                story.append(Paragraph(text, heading2_style))
-            
-            # ### 제목 (소제목)
-            elif line.startswith('### '):
-                text = line[4:].strip()
-                story.append(Paragraph(text, heading3_style))
-            
-            # 구분선
-            elif line.startswith('---'):
-                story.append(Spacer(1, 0.2*inch))
-            
-            # 리스트 항목 (- 또는 •)
-            elif line.startswith('- ') or line.startswith('• '):
-                text = line[2:].strip()
-                # 볼드 처리
-                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-                story.append(Paragraph(f"• {text}", normal_style))
-            
-            # 번호 리스트
-            elif re.match(r'^\d+\.\s', line):
-                text = re.sub(r'^\d+\.\s', '', line)
-                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-                story.append(Paragraph(f"• {text}", normal_style))
-            
-            # 일반 텍스트
-            else:
-                # 마크다운 포맷팅 처리
-                text = line
-                # 볼드 처리
-                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-                # 이탤릭 처리
-                text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
-                
-                if text.strip():
-                    story.append(Paragraph(text, normal_style))
-            
-            i += 1
         
         doc.build(story)
         buffer.seek(0)

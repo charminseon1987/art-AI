@@ -84,21 +84,25 @@ class AIService:
         if not reflection_questions.questions:
             logging.warning(f"질문 파싱 실패. 원본 결과: {str(question_result)[:500]}")
         
-        # 4단계: 전문가 결론 생성
-        conclusion_task = self.conclusion_agent.create_conclusion_task(
+        # 4단계: 전문가 결론 생성 (참고 자료 포함)
+        reference_material = self.scraping_service.get_reference_material()
+        # ConclusionAgent에 참고 자료 전달
+        conclusion_agent_with_refs = ConclusionAgent(self.llm, reference_material=reference_material)
+        conclusion_task = conclusion_agent_with_refs.create_conclusion_task(
             observation,
             emotional_language,
             reflection_questions,
-            user_emotion
+            user_emotion,
+            chat_responses=None  # 이미지 분석 시점에는 사용자 답변이 없음
         )
         conclusion_crew = Crew(
-            agents=[self.conclusion_agent.agent],
+            agents=[conclusion_agent_with_refs.agent],
             tasks=[conclusion_task],
             process=Process.sequential,
             verbose=True
         )
         conclusion_result = conclusion_crew.kickoff()
-        professional_conclusion = self.conclusion_agent.parse_conclusion(str(conclusion_result))
+        professional_conclusion = conclusion_agent_with_refs.parse_conclusion(str(conclusion_result))
         
         # ReportData 객체 생성 (20년 경력 상담전문가의 FinalAnswer를 보고서로 사용)
         import uuid

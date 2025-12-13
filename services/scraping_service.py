@@ -196,8 +196,9 @@ class ArtTherapyScrapingService:
         return formatted
     
     def get_reference_material(self) -> str:
-        """에이전트가 참고할 수 있는 미술 심리 자료 반환"""
+        """에이전트가 참고할 수 있는 미술 심리 자료 반환 (논문 및 연구 자료 포함)"""
         resources = self.scrape_art_therapy_resources()
+        psychology_resources = self.get_psychology_resources()
         
         reference = """
 ## 미술 심리 참고 자료
@@ -215,11 +216,15 @@ class ArtTherapyScrapingService:
         for comp, meaning in resources["composition_analysis"].items():
             reference += f"- **{comp}**: {meaning}\n"
         
+        reference += "\n### 미술심리학 논문 및 연구 자료\n"
+        reference += psychology_resources
+        
         reference += "\n### 중요 원칙\n"
         reference += "- 모든 해석은 맥락과 함께 고려되어야 함\n"
         reference += "- 개인의 표현 스타일과 문화적 배경을 고려해야 함\n"
         reference += "- 해석보다는 관찰과 질문에 집중해야 함\n"
-        reference += "- 내담자의 설명을 듣는 것이 가장 중요함\n"
+        reference += "- 논문 및 연구 자료를 참고하여 전문적인 분석 수행\n"
+        reference += "- 객관적이고 사실 기반의 분석 제공\n"
         
         return reference
     

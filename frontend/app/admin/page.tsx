@@ -489,12 +489,12 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* 4. 20년 경력 상담전문가 결과 */}
+                  {/* 4. 상담전문가 결과 */}
                   {selectedReport.professional_conclusion && (
                     <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-lg shadow-md border-l-4 border-purple-500">
                       <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span className="text-2xl">👨‍⚕️</span> 4. 미술심리 전문가
-                        종합 분석 (20년 경력)
+                        종합 분석
                       </h3>
                       <div className="space-y-4">
                         {selectedReport.professional_conclusion
@@ -635,7 +635,7 @@ export default function AdminPage() {
                           );
                           html = html.replace(
                             /====\s*종합결론 전문가 종합 평가\s*====/g,
-                            '</div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가 (20년 경력)</h2>'
+                            '</div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2>'
                           );
 
                           // 필드별 포맷팅

@@ -351,181 +351,6 @@ export default function CounselingPage() {
                   </div>
                 )}
 
-                {/* 3. 상담 질문 생성 전문가 결과 */}
-                {reportData.report.reflection_questions && (
-                  <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <span className="text-2xl">❓</span> 3. 상담 질문 생성
-                      전문가 결과
-                    </h3>
-                    <div className="space-y-4">
-                      {reportData.report.reflection_questions.questions &&
-                        reportData.report.reflection_questions.questions
-                          .length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              생성된 질문:
-                            </p>
-                            <ol className="list-decimal list-inside space-y-2 text-gray-800">
-                              {reportData.report.reflection_questions.questions.map(
-                                (question: string, idx: number) => (
-                                  <li key={idx} className="pl-2">
-                                    {question}
-                                  </li>
-                                )
-                              )}
-                            </ol>
-                          </div>
-                        )}
-                      {reportData.report.reflection_questions.categories &&
-                        reportData.report.reflection_questions.categories
-                          .length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              질문 카테고리:
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {reportData.report.reflection_questions.categories.map(
-                                (category: string, idx: number) => (
-                                  <span
-                                    key={idx}
-                                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm"
-                                  >
-                                    {category}
-                                  </span>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      {reportData.report.reflection_questions.purpose && (
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600 mb-2">
-                            질문의 목적:
-                          </p>
-                          <p className="text-gray-800">
-                            {reportData.report.reflection_questions.purpose}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. 20년 경력 상담전문가 종합 결론 */}
-                {reportData.report.professional_conclusion && (
-                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-lg shadow-md border-l-4 border-purple-500">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <span className="text-2xl">👨‍⚕️</span> 4. 미술심리 전문가
-                      종합 분석 (20년 경력)
-                    </h3>
-                    <div className="space-y-4">
-                      {reportData.report.professional_conclusion
-                        .executive_summary &&
-                        reportData.report.professional_conclusion
-                          .executive_summary !==
-                          "결론 파싱 중 오류가 발생했습니다." && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              요약 및 핵심 인사이트:
-                            </p>
-                            <p className="text-gray-800 whitespace-pre-line">
-                              {
-                                reportData.report.professional_conclusion
-                                  .executive_summary
-                              }
-                            </p>
-                          </div>
-                        )}
-                      {reportData.report.professional_conclusion.key_findings &&
-                        reportData.report.professional_conclusion.key_findings
-                          .length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              주요 발견 사항:
-                            </p>
-                            <ul className="list-disc list-inside space-y-1 text-gray-800">
-                              {reportData.report.professional_conclusion.key_findings.map(
-                                (finding: string, idx: number) => (
-                                  <li key={idx}>{finding}</li>
-                                )
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                      {reportData.report.professional_conclusion
-                        .counseling_direction && (
-                        <div>
-                          <p className="text-sm font-semibold text-gray-600 mb-2">
-                            상담 방향성 제시:
-                          </p>
-                          <p className="text-gray-800 whitespace-pre-line">
-                            {
-                              reportData.report.professional_conclusion
-                                .counseling_direction
-                            }
-                          </p>
-                        </div>
-                      )}
-                      {reportData.report.professional_conclusion.focus_areas &&
-                        reportData.report.professional_conclusion.focus_areas
-                          .length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              집중 탐색 영역:
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {reportData.report.professional_conclusion.focus_areas.map(
-                                (area: string, idx: number) => (
-                                  <span
-                                    key={idx}
-                                    className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
-                                  >
-                                    {area}
-                                  </span>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      {reportData.report.professional_conclusion
-                        .professional_assessment &&
-                        !reportData.report.professional_conclusion.professional_assessment.includes(
-                          "결론 파싱 중 오류가 발생했습니다"
-                        ) && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              전문가 종합 평가:
-                            </p>
-                            <p className="text-gray-800 whitespace-pre-line">
-                              {
-                                reportData.report.professional_conclusion
-                                  .professional_assessment
-                              }
-                            </p>
-                          </div>
-                        )}
-                      {reportData.report.professional_conclusion
-                        .recommendations &&
-                        reportData.report.professional_conclusion
-                          .recommendations.length > 0 && (
-                          <div>
-                            <p className="text-sm font-semibold text-gray-600 mb-2">
-                              권장 사항:
-                            </p>
-                            <ul className="list-disc list-inside space-y-1 text-gray-800">
-                              {reportData.report.professional_conclusion.recommendations.map(
-                                (rec: string, idx: number) => (
-                                  <li key={idx}>{rec}</li>
-                                )
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                )}
-
                 {/* 5. 종합 결론 보고서 (터미널 출력 형식) */}
                 {reportData.report.professional_report && (
                   <div className="bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
@@ -548,130 +373,165 @@ export default function CounselingPage() {
 
                           // ==== 섹션 구분자 처리 (먼저 처리)
                           html = html.replace(
-                            /====\s*이미지 분석\s*====/g,
-                            '<div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-blue-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">🎨</span> 이미지 분석</h2><div class="space-y-3">'
-                          );
-                          html = html.replace(
-                            /====\s*감정 언어 분석\s*====/g,
-                            '</div></div><div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-pink-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">💭</span> 감정 언어 분석</h2><div class="space-y-3">'
-                          );
-                          html = html.replace(
                             /====\s*종합결론 전문가 종합 평가\s*====/g,
-                            '</div></div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가 (20년 경력)</h2><div class="space-y-3">'
+                            '<div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2><div class="space-y-4 prose prose-lg max-w-none">'
                           );
+
+                          // 대괄호로 감싼 섹션 제목 제거 (가독성 개선)
+                          // [섹션 제목] 형식을 제거하고 내용만 남김 (여러 줄에 걸쳐 있을 수 있음)
+                          html = html.replace(/\[\s*[^\]]+\s*\]\s*\n*/g, "");
+
+                          // 줄바꿈 정리 (연속된 빈 줄을 하나로)
+                          html = html.replace(/\n{3,}/g, "\n\n");
+
+                          // 문단 형식으로 변환 (빈 줄로 구분된 텍스트를 <p> 태그로)
+                          // 먼저 섹션 헤더 이후의 내용을 추출
+                          const sectionMatch = html.match(
+                            /종합결론 전문가 종합 평가<\/h2><div class="space-y-4 prose prose-lg max-w-none">([\s\S]*?)(?=<\/div><\/div>|$)/
+                          );
+                          if (sectionMatch) {
+                            let content = sectionMatch[1];
+
+                            // 대괄호 제목 제거
+                            content = content.replace(
+                              /\[\s*[^\]]+\s*\]\s*\n*/g,
+                              ""
+                            );
+
+                            // 빈 줄로 구분된 문단을 <p> 태그로 변환
+                            const paragraphs = content
+                              .split(/\n\s*\n/)
+                              .map((p: string) => p.trim())
+                              .filter(
+                                (p: string) =>
+                                  p.length > 0 && !p.match(/^\[.*\]$/)
+                              );
+
+                            const formattedParagraphs = paragraphs
+                              .map(
+                                (p: string) =>
+                                  `<p class="mb-4 text-gray-800 leading-relaxed text-base">${p}</p>`
+                              )
+                              .join("");
+
+                            html = html.replace(
+                              /(종합결론 전문가 종합 평가<\/h2><div class="space-y-4 prose prose-lg max-w-none">)([\s\S]*?)(?=<\/div><\/div>|$)/,
+                              `$1${formattedParagraphs}`
+                            );
+                          }
 
                           // 필드별 포맷팅 (더 포괄적인 패턴 사용 - 여러 줄까지 포함)
-                          html = html.replace(
-                            /-\s*composition:\s*([\s\S]*?)(?=\n\s*-\s*(?:details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📐</span> 구성</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
+                          //   html = html.replace(
+                          //     /-\s*composition:\s*([\s\S]*?)(?=\n\s*-\s*(?:details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📐</span> 구성</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          //   );
 
                           // details: 여러 줄 처리 (다음 필드나 섹션까지)
-                          html = html.replace(
-                            /-\s*details:\s*([\s\S]*?)(?=\n\s*-\s*(?:overall_impression|composition|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
-                            (match: string, content: string) => {
-                              const lines = content
-                                .split("\n")
-                                .filter((line: string) => line.trim())
-                                .map((line: string) => {
-                                  const trimmed = line
-                                    .replace(/^\s*-\s*/, "")
-                                    .trim();
-                                  return trimmed;
-                                })
-                                .filter((line: string) => line.length > 0);
+                          //   html = html.replace(
+                          //     /-\s*details:\s*([\s\S]*?)(?=\n\s*-\s*(?:overall_impression|composition|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
+                          //     (match: string, content: string) => {
+                          //       const lines = content
+                          //         .split("\n")
+                          //         .filter((line: string) => line.trim())
+                          //         .map((line: string) => {
+                          //           const trimmed = line
+                          //             .replace(/^\s*-\s*/, "")
+                          //             .trim();
+                          //           return trimmed;
+                          //         })
+                          //         .filter((line: string) => line.length > 0);
 
-                              const listItems = lines
-                                .map(
-                                  (item: string) =>
-                                    `<li class="mb-2 text-gray-700 pl-2">${item}</li>`
-                                )
-                                .join("");
+                          //       const listItems = lines
+                          //         .map(
+                          //           (item: string) =>
+                          //             `<li class="mb-2 text-gray-700 pl-2">${item}</li>`
+                          //         )
+                          //         .join("");
 
-                              return `<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-2 font-semibold flex items-center gap-1"><span>🔍</span> 세부사항</p><ul class="list-disc list-inside space-y-1">${listItems}</ul></div>`;
-                            }
-                          );
+                          //       return `<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-2 font-semibold flex items-center gap-1"><span>🔍</span> 세부사항</p><ul class="list-disc list-inside space-y-1">${listItems}</ul></div>`;
+                          //     }
+                          //   );
 
-                          html = html.replace(
-                            /-\s*overall_impression:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🌟</span> 전체 인상</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /-\s*dominant_emotions:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>😊</span> 주요 감정</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /-\s*emotional_tone:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|symbolic_elements|intensity_level)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🎭</span> 감정적 톤</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /-\s*symbolic_elements:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|intensity_level)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🔮</span> 상징적 요소</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /-\s*intensity_level:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements)|====|$)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📊</span> 강도 수준</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
-                          );
+                          //   html = html.replace(
+                          //     /-\s*overall_impression:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|dominant_emotions|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🌟</span> 전체 인상</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          //   );
+                          //   html = html.replace(
+                          //     /-\s*dominant_emotions:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|emotional_tone|symbolic_elements|intensity_level)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>😊</span> 주요 감정</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          // //   );
+                          //   html = html.replace(
+                          //     /-\s*emotional_tone:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|symbolic_elements|intensity_level)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🎭</span> 감정적 톤</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          // //   );
+                          //   html = html.replace(
+                          //     /-\s*symbolic_elements:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|intensity_level)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🔮</span> 상징적 요소</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          // //   );
+                          //   html = html.replace(
+                          //     /-\s*intensity_level:\s*([\s\S]*?)(?=\n\s*-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements)|====|$)/g,
+                          //     '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📊</span> 강도 수준</p><p class="text-gray-800 font-medium whitespace-pre-line">$1</p></div>'
+                          //   );
 
                           // 종합결론 섹션의 일반 텍스트 처리 (필드가 아닌 텍스트 - 여러 줄)
                           // 섹션 헤더 이후의 내용을 처리
-                          html = html.replace(
-                            /(종합결론 전문가 종합 평가 \(20년 경력\)<\/h2><div class="space-y-3">)([\s\S]*?)(?=<\/div><\/div>|$)/g,
-                            (
-                              match: string,
-                              header: string,
-                              content: string
-                            ) => {
-                              // 이미 포맷팅된 div 태그들을 제거하고 원본 텍스트만 추출
-                              const originalText = content
-                                .replace(/<div[^>]*>[\s\S]*?<\/div>/g, "") // 포맷팅된 div 제거
-                                .replace(/<[^>]+>/g, "") // 나머지 HTML 태그 제거
-                                .replace(/&lt;/g, "<")
-                                .replace(/&gt;/g, ">")
-                                .replace(/&amp;/g, "&");
+                          //   html = html.replace(
+                          //     /(종합결론 전문가 종합 평가 \(20년 경력\)<\/h2><div class="space-y-3">)([\s\S]*?)(?=<\/div><\/div>|$)/g,
+                          //     (
+                          //       match: string,
+                          //       header: string,
+                          //       content: string
+                          //     ) => {
+                          //       // 이미 포맷팅된 div 태그들을 제거하고 원본 텍스트만 추출
+                          //       const originalText = content
+                          //         .replace(/<div[^>]*>[\s\S]*?<\/div>/g, "") // 포맷팅된 div 제거
+                          //         .replace(/<[^>]+>/g, "") // 나머지 HTML 태그 제거
+                          //         .replace(/&lt;/g, "<")
+                          //         .replace(/&gt;/g, ">")
+                          //         .replace(/&amp;/g, "&");
 
-                              // 줄 단위로 분리하여 처리
-                              const lines = originalText
-                                .split("\n")
-                                .filter((line: string) => line.trim());
-                              let formattedContent = "";
-                              let currentParagraph = "";
+                          //       // 줄 단위로 분리하여 처리
+                          //       const lines = originalText
+                          //         .split("\n")
+                          //         .filter((line: string) => line.trim());
+                          //       let formattedContent = "";
+                          //       let currentParagraph = "";
 
-                              for (const line of lines) {
-                                const trimmed = line.trim();
-                                if (!trimmed) continue;
+                          //       for (const line of lines) {
+                          //         const trimmed = line.trim();
+                          //         if (!trimmed) continue;
 
-                                // 필드로 시작하는 줄은 이미 포맷팅됨 (건너뛰기)
-                                if (
-                                  trimmed.match(
-                                    /^-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements|intensity_level):/
-                                  )
-                                ) {
-                                  continue;
-                                }
+                          //         // 필드로 시작하는 줄은 이미 포맷팅됨 (건너뛰기)
+                          //         if (
+                          //           trimmed.match(
+                          //             /^-\s*(?:composition|details|overall_impression|dominant_emotions|emotional_tone|symbolic_elements|intensity_level):/
+                          //           )
+                          //         ) {
+                          //           continue;
+                          //         }
 
-                                // 일반 텍스트 누적
-                                if (currentParagraph) {
-                                  currentParagraph += " " + trimmed;
-                                } else {
-                                  currentParagraph = trimmed;
-                                }
-                              }
+                          //         // 일반 텍스트 누적
+                          //         if (currentParagraph) {
+                          //           currentParagraph += " " + trimmed;
+                          //         } else {
+                          //           currentParagraph = trimmed;
+                          //         }
+                          //       }
 
-                              // 마지막 문단 처리
-                              if (currentParagraph) {
-                                formattedContent = `<p class="mb-3 text-gray-800 leading-relaxed whitespace-pre-line">${currentParagraph}</p>`;
-                              }
+                          //       // 마지막 문단 처리
+                          //       if (currentParagraph) {
+                          //         formattedContent = `<p class="mb-3 text-gray-800 leading-relaxed whitespace-pre-line">${currentParagraph}</p>`;
+                          //       }
 
-                              return header + content + formattedContent;
-                            }
-                          );
+                          //       return header + content + formattedContent;
+                          //     }
+                          //   );
 
-                          // 나머지 줄들도 처리 (섹션 내 일반 텍스트 - 필드가 아닌 것들)
-                          html = html.replace(
-                            /^(?!-|\s*====|<div|<h|<p)([^\n]+(?:\n(?!-|\s*====|<div|<h|<p)[^\n]+)*)/gm,
-                            '<p class="mb-3 text-gray-800 leading-relaxed whitespace-pre-line">$1</p>'
-                          );
+                          //   // 나머지 줄들도 처리 (섹션 내 일반 텍스트 - 필드가 아닌 것들)
+                          //   html = html.replace(
+                          //     /^(?!-|\s*====|<div|<h|<p)([^\n]+(?:\n(?!-|\s*====|<div|<h|<p)[^\n]+)*)/gm,
+                          //     '<p class="mb-3 text-gray-800 leading-relaxed whitespace-pre-line">$1</p>'
+                          //   );
 
                           // 줄바꿈 처리 (이미 포맷팅된 부분은 제외)
                           html = html.replace(/(?<!>)\n(?!<)/g, "<br />");
