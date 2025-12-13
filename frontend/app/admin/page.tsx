@@ -9,7 +9,12 @@ import {
   Filter,
   Image as ImageIcon,
 } from "lucide-react";
-import { getReports, getReport } from "@/lib/api";
+import {
+  getReports,
+  getReport,
+  downloadAdminReportPDF,
+  saveCounselorAnswers,
+} from "@/lib/api";
 import Link from "next/link";
 
 interface Report {
@@ -23,6 +28,11 @@ export default function AdminPage() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [counselorAnswers, setCounselorAnswers] = useState<
+    Record<number, string>
+  >({});
+  const [savingAnswers, setSavingAnswers] = useState(false);
+  const [answersSaved, setAnswersSaved] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -46,9 +56,25 @@ export default function AdminPage() {
   const loadReportDetail = async (reportId: string) => {
     try {
       setLoading(true);
+      // 리포트 변경 시 상태 초기화
+      setCounselorAnswers({});
+      setAnswersSaved(false);
+
       const data = await getReport(reportId);
       if (data.success) {
         setSelectedReport(data.report);
+        // 기존 상담사 답변 불러오기
+        if (data.report.image_metadata?.counselor_answers) {
+          setCounselorAnswers(data.report.image_metadata.counselor_answers);
+          // 저장된 답변이 있으면 비활성화 상태로 설정
+          const hasAnswers =
+            Object.keys(data.report.image_metadata.counselor_answers).length >
+            0;
+          setAnswersSaved(hasAnswers);
+        } else {
+          setCounselorAnswers({});
+          setAnswersSaved(false);
+        }
       }
     } catch (error: any) {
       console.error("리포트 상세 로드 오류:", error);
@@ -179,28 +205,18 @@ export default function AdminPage() {
                   </h2>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        const blob = new Blob(
-                          [
-                            selectedReport.professional_report ||
-                              selectedReport.chat_based_report ||
-                              "",
-                          ],
-                          { type: "text/markdown" }
-                        );
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `전문리포트_${selectedReport.id.substring(
-                          0,
-                          8
-                        )}.md`;
-                        a.click();
+                      onClick={async () => {
+                        if (!selectedReport) return;
+                        try {
+                          await downloadAdminReportPDF(selectedReport.id);
+                        } catch (error: any) {
+                          alert("PDF 다운로드 실패: " + error.message);
+                        }
                       }}
                       className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                     >
                       <Download className="w-4 h-4" />
-                      다운로드
+                      PDF 다운로드
                     </button>
                   </div>
                 </div>
@@ -441,17 +457,113 @@ export default function AdminPage() {
                             0 && (
                             <div>
                               <p className="text-sm font-semibold text-gray-600 mb-2">
-                                생성된 질문:
+                                생성된 질문 및 상담사 답변:
                               </p>
-                              <ol className="list-decimal list-inside space-y-2 text-gray-800">
+                              <div className="space-y-4">
                                 {selectedReport.reflection_questions.questions.map(
-                                  (question: string, idx: number) => (
-                                    <li key={idx} className="pl-2">
-                                      {question}
-                                    </li>
-                                  )
+                                  (question: string, idx: number) => {
+                                    // 사용자가 입력한 답변을 우선적으로 사용, 없으면 저장된 답변 사용
+                                    const existingAnswer =
+                                      counselorAnswers[idx] !== undefined
+                                        ? counselorAnswers[idx]
+                                        : selectedReport.image_metadata
+                                            ?.counselor_answers?.[idx] || "";
+
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="border border-gray-200 rounded-lg p-4"
+                                      >
+                                        <div className="mb-2">
+                                          <span className="font-semibold text-gray-700">
+                                            질문 {idx + 1}:
+                                          </span>
+                                          <p className="text-gray-800 mt-1">
+                                            {question}
+                                          </p>
+                                        </div>
+                                        <div className="mt-3">
+                                          <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                            상담사 답변:
+                                          </label>
+                                          <textarea
+                                            value={existingAnswer}
+                                            onChange={(e) => {
+                                              setCounselorAnswers({
+                                                ...counselorAnswers,
+                                                [idx]: e.target.value,
+                                              });
+                                              // 답변 수정 시 저장 상태 해제
+                                              setAnswersSaved(false);
+                                            }}
+                                            placeholder="전문가적 의견을 입력하세요"
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-black disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                            rows={4}
+                                            disabled={answersSaved}
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  }
                                 )}
-                              </ol>
+                              </div>
+                              <div className="mt-4">
+                                <button
+                                  onClick={async () => {
+                                    if (!selectedReport) return;
+
+                                    // 저장할 답변 확인 (빈 문자열도 포함)
+                                    const answersToSave = {
+                                      ...counselorAnswers,
+                                    };
+
+                                    // 모든 질문에 대해 답변이 있는지 확인
+                                    if (
+                                      selectedReport.reflection_questions
+                                        ?.questions
+                                    ) {
+                                      selectedReport.reflection_questions.questions.forEach(
+                                        (_: string, idx: number) => {
+                                          if (!(idx in answersToSave)) {
+                                            answersToSave[idx] = "";
+                                          }
+                                        }
+                                      );
+                                    }
+
+                                    setSavingAnswers(true);
+                                    try {
+                                      await saveCounselorAnswers(
+                                        selectedReport.id,
+                                        answersToSave
+                                      );
+                                      // 답변 저장 완료 상태로 설정하여 입력 박스 비활성화
+                                      setAnswersSaved(true);
+                                      // 리포트 다시 로드하여 업데이트된 답변 반영
+                                      await loadReportDetail(selectedReport.id);
+                                      alert("상담사 답변이 저장되었습니다.");
+                                    } catch (error: any) {
+                                      alert("답변 저장 실패: " + error.message);
+                                      setAnswersSaved(false);
+                                    } finally {
+                                      setSavingAnswers(false);
+                                    }
+                                  }}
+                                  disabled={
+                                    savingAnswers ||
+                                    Object.keys(counselorAnswers).length ===
+                                      0 ||
+                                    answersSaved
+                                  }
+                                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors"
+                                >
+                                  {savingAnswers
+                                    ? "저장 중..."
+                                    : answersSaved
+                                    ? "저장 완료"
+                                    : "상담사 답변 저장"}
+                                </button>
+                              </div>
                             </div>
                           )}
                         {selectedReport.reflection_questions.categories &&
@@ -496,6 +608,134 @@ export default function AdminPage() {
                         <span className="text-2xl">👨‍⚕️</span> 4. 미술심리 전문가
                         종합 분석
                       </h3>
+                      {/* 전문 리포트 내용 */}
+                      <div className="prose max-w-none">
+                        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                          <div
+                            className="markdown-content text-gray-800 whitespace-pre-line"
+                            dangerouslySetInnerHTML={{
+                              __html: (() => {
+                                const reportContent =
+                                  selectedReport.professional_report ||
+                                  selectedReport.chat_based_report ||
+                                  selectedReport.image_metadata
+                                    ?.professional_report ||
+                                  "전문 리포트가 생성되지 않았습니다.";
+
+                                if (typeof reportContent !== "string") {
+                                  return "전문 리포트가 생성되지 않았습니다.";
+                                }
+
+                                let html = reportContent;
+
+                                // ==== 섹션 구분자 처리
+                                html = html.replace(
+                                  /====\s*이미지 분석\s*====/g,
+                                  '<div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-blue-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">🎨</span> 이미지 분석</h2>'
+                                );
+                                html = html.replace(
+                                  /====\s*감정 언어 분석\s*====/g,
+                                  '</div><div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-pink-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">💭</span> 감정 언어 분석</h2>'
+                                );
+                                html = html.replace(
+                                  /====\s*종합결론 전문가 종합 평가\s*====/g,
+                                  '</div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2>'
+                                );
+
+                                // 필드별 포맷팅
+                                html = html.replace(
+                                  /composition:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📐</span> 구성</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+                                html = html.replace(
+                                  /details:\s*([\s\S]*?)(?=\n\n|====|overall_impression:|$)/g,
+                                  (match, content) => {
+                                    const items = content
+                                      .split("\n")
+                                      .filter((line: string) => line.trim());
+                                    const listItems = items
+                                      .map((item: string) => {
+                                        const trimmed = item
+                                          .replace(/^-\s*/, "")
+                                          .trim();
+                                        return `<li class="mb-2 text-gray-700 pl-2">${trimmed}</li>`;
+                                      })
+                                      .join("");
+                                    return `<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-2 font-semibold flex items-center gap-1"><span>🔍</span> 세부사항</p><ul class="list-disc list-inside space-y-1">${listItems}</ul></div>`;
+                                  }
+                                );
+                                html = html.replace(
+                                  /overall_impression:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🌟</span> 전체 인상</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+                                html = html.replace(
+                                  /dominant_emotions:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>😊</span> 주요 감정</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+                                html = html.replace(
+                                  /emotional_tone:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🎭</span> 감정적 톤</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+                                html = html.replace(
+                                  /symbolic_elements:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🔮</span> 상징적 요소</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+                                html = html.replace(
+                                  /intensity_level:\s*([^\n]+)/g,
+                                  '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📊</span> 강도 수준</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                );
+
+                                // 마크다운 기본 포맷팅
+                                html = html.replace(
+                                  /##\s+(.+?)(?=\n|$)/g,
+                                  '<h2 class="text-xl font-bold mt-8 mb-4 text-gray-900 border-b-2 border-gray-300 pb-2 flex items-center gap-2"><span class="text-xl">📋</span> $1</h2>'
+                                );
+                                html = html.replace(
+                                  /###\s+(.+?)(?=\n|$)/g,
+                                  '<h3 class="text-lg font-semibold mt-6 mb-3 text-gray-800 flex items-center gap-2"><span class="text-lg">▸</span> $1</h3>'
+                                );
+                                html = html.replace(
+                                  /#\s+(.+?)(?=\n|$)/g,
+                                  '<h1 class="text-2xl font-bold mb-6 text-gray-900">$1</h1>'
+                                );
+                                html = html.replace(
+                                  /\*\*(.+?)\*\*/g,
+                                  '<strong class="font-semibold text-gray-900">$1</strong>'
+                                );
+                                html = html.replace(
+                                  /\*(.+?)\*/g,
+                                  '<em class="text-gray-700">$1</em>'
+                                );
+                                html = html.replace(
+                                  /^-\s+(.+?)(?=\n|$)/gm,
+                                  '<li class="ml-4 mb-2 text-gray-700">$1</li>'
+                                );
+                                html = html.replace(
+                                  /\n\n/g,
+                                  '</p><p class="mb-3 text-gray-800 leading-relaxed">'
+                                );
+                                html = html.replace(/\n/g, "<br />");
+                                html = html.replace(
+                                  /^(.+)$/gm,
+                                  '<p class="mb-3 text-gray-800 leading-relaxed">$1</p>'
+                                );
+
+                                // 마지막 닫기 태그 추가
+                                if (
+                                  !html.includes("</div>") ||
+                                  html.split("</div>").length <
+                                    html.split("<div").length
+                                ) {
+                                  html += "</div>";
+                                }
+
+                                return html;
+                              })(),
+                            }}
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-4">
                         {selectedReport.professional_conclusion
                           .executive_summary &&
@@ -602,134 +842,6 @@ export default function AdminPage() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* 전문 리포트 내용 */}
-                <div className="prose max-w-none">
-                  <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <div
-                      className="markdown-content text-gray-800 whitespace-pre-line"
-                      dangerouslySetInnerHTML={{
-                        __html: (() => {
-                          const reportContent =
-                            selectedReport.professional_report ||
-                            selectedReport.chat_based_report ||
-                            selectedReport.image_metadata
-                              ?.professional_report ||
-                            "전문 리포트가 생성되지 않았습니다.";
-
-                          if (typeof reportContent !== "string") {
-                            return "전문 리포트가 생성되지 않았습니다.";
-                          }
-
-                          let html = reportContent;
-
-                          // ==== 섹션 구분자 처리
-                          html = html.replace(
-                            /====\s*이미지 분석\s*====/g,
-                            '<div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-blue-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">🎨</span> 이미지 분석</h2>'
-                          );
-                          html = html.replace(
-                            /====\s*감정 언어 분석\s*====/g,
-                            '</div><div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-pink-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">💭</span> 감정 언어 분석</h2>'
-                          );
-                          html = html.replace(
-                            /====\s*종합결론 전문가 종합 평가\s*====/g,
-                            '</div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2>'
-                          );
-
-                          // 필드별 포맷팅
-                          html = html.replace(
-                            /composition:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📐</span> 구성</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /details:\s*([\s\S]*?)(?=\n\n|====|overall_impression:|$)/g,
-                            (match, content) => {
-                              const items = content
-                                .split("\n")
-                                .filter((line: string) => line.trim());
-                              const listItems = items
-                                .map((item: string) => {
-                                  const trimmed = item
-                                    .replace(/^-\s*/, "")
-                                    .trim();
-                                  return `<li class="mb-2 text-gray-700 pl-2">${trimmed}</li>`;
-                                })
-                                .join("");
-                              return `<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-2 font-semibold flex items-center gap-1"><span>🔍</span> 세부사항</p><ul class="list-disc list-inside space-y-1">${listItems}</ul></div>`;
-                            }
-                          );
-                          html = html.replace(
-                            /overall_impression:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🌟</span> 전체 인상</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /dominant_emotions:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>😊</span> 주요 감정</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /emotional_tone:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🎭</span> 감정적 톤</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /symbolic_elements:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🔮</span> 상징적 요소</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-                          html = html.replace(
-                            /intensity_level:\s*([^\n]+)/g,
-                            '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📊</span> 강도 수준</p><p class="text-gray-800 font-medium">$1</p></div>'
-                          );
-
-                          // 마크다운 기본 포맷팅
-                          html = html.replace(
-                            /##\s+(.+?)(?=\n|$)/g,
-                            '<h2 class="text-xl font-bold mt-8 mb-4 text-gray-900 border-b-2 border-gray-300 pb-2 flex items-center gap-2"><span class="text-xl">📋</span> $1</h2>'
-                          );
-                          html = html.replace(
-                            /###\s+(.+?)(?=\n|$)/g,
-                            '<h3 class="text-lg font-semibold mt-6 mb-3 text-gray-800 flex items-center gap-2"><span class="text-lg">▸</span> $1</h3>'
-                          );
-                          html = html.replace(
-                            /#\s+(.+?)(?=\n|$)/g,
-                            '<h1 class="text-2xl font-bold mb-6 text-gray-900">$1</h1>'
-                          );
-                          html = html.replace(
-                            /\*\*(.+?)\*\*/g,
-                            '<strong class="font-semibold text-gray-900">$1</strong>'
-                          );
-                          html = html.replace(
-                            /\*(.+?)\*/g,
-                            '<em class="text-gray-700">$1</em>'
-                          );
-                          html = html.replace(
-                            /^-\s+(.+?)(?=\n|$)/gm,
-                            '<li class="ml-4 mb-2 text-gray-700">$1</li>'
-                          );
-                          html = html.replace(
-                            /\n\n/g,
-                            '</p><p class="mb-3 text-gray-800 leading-relaxed">'
-                          );
-                          html = html.replace(/\n/g, "<br />");
-                          html = html.replace(
-                            /^(.+)$/gm,
-                            '<p class="mb-3 text-gray-800 leading-relaxed">$1</p>'
-                          );
-
-                          // 마지막 닫기 태그 추가
-                          if (
-                            !html.includes("</div>") ||
-                            html.split("</div>").length <
-                              html.split("<div").length
-                          ) {
-                            html += "</div>";
-                          }
-
-                          return html;
-                        })(),
-                      }}
-                    />
-                  </div>
                 </div>
 
                 {/* Chat 응답 (있는 경우) */}

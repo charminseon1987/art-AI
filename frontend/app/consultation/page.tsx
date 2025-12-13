@@ -6,12 +6,14 @@ export default function ConsultationPage() {
     {
       num: "1️⃣",
       title: "그림 상담 (AI)",
-      description: "아이의 그림을 AI로 분석하고 상담 질문을 통해 이야기를 나눕니다.",
+      description:
+        "아이의 그림을 AI로 분석하고 상담 질문을 통해 이야기를 나눕니다.",
     },
     {
       num: "2️⃣",
       title: "보호자 상담 (20분)",
-      description: "생성된 리포트를 바탕으로 보호자와 간단한 상담을 진행합니다.",
+      description:
+        "생성된 리포트를 바탕으로 보호자와 간단한 상담을 진행합니다.",
     },
     {
       num: "3️⃣",
@@ -73,7 +75,8 @@ export default function ConsultationPage() {
         <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
           <h2 className="text-xl font-bold text-gray-800 mb-4">상담에 대해</h2>
           <p className="text-lg text-gray-800">
-            💡 <strong>아이를 '문제'로 보지 않습니다.</strong><br />
+            💡 <strong>아이를 '문제'로 보지 않습니다.</strong>
+            <br />
             아이의 속도를 먼저 이해합니다.
           </p>
         </div>
@@ -81,4 +84,3 @@ export default function ConsultationPage() {
     </div>
   );
 }
-

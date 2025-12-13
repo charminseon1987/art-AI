@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Palette, Home, MessageSquare, Phone, Mail, FileText } from "lucide-react";
+import {
+  Palette,
+  Home,
+  MessageSquare,
+  Phone,
+  Mail,
+  FileText,
+} from "lucide-react";
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -22,11 +29,14 @@ export default function Navigation() {
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-800">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-xl font-bold text-gray-800"
+          >
             <Palette className="w-6 h-6 text-blue-600" />
             <span>미술 수업 & 그림 상담</span>
           </Link>
-          
+
           <div className="hidden md:flex space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -51,14 +61,24 @@ export default function Navigation() {
           {/* Mobile menu button */}
           <div className="md:hidden">
             <button className="text-gray-700">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
           </div>
         </div>
       </div>
-      
+
       {/* 관리자 링크 (하단) */}
       {!isAdminPage && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2">
@@ -74,4 +94,3 @@ export default function Navigation() {
     </nav>
   );
 }
-

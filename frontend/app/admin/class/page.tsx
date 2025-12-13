@@ -30,7 +30,7 @@ export default function AdminClassWorkPage() {
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setImages([...images, ...files]);
-    
+
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -47,7 +47,7 @@ export default function AdminClassWorkPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!thumbnail || !ageRange || !title) {
       alert("섬네일, 나이, 제목은 필수입니다.");
       return;
@@ -62,7 +62,7 @@ export default function AdminClassWorkPage() {
       if (description) {
         formData.append("description", description);
       }
-      
+
       // 이미지가 있으면 각각 추가
       images.forEach((img) => {
         formData.append("images", img);
@@ -80,7 +80,7 @@ export default function AdminClassWorkPage() {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         alert("작품이 등록되었습니다!");
         router.push("/class");
@@ -90,7 +90,9 @@ export default function AdminClassWorkPage() {
       }
     } catch (error: any) {
       console.error("업로드 오류:", error);
-      alert("업로드 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+      alert(
+        "업로드 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류")
+      );
     } finally {
       setUploading(false);
     }
@@ -103,7 +105,10 @@ export default function AdminClassWorkPage() {
           수업 작품 등록
         </h1>
 
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-8 rounded-lg shadow-md space-y-6"
+        >
           {/* 섬네일 업로드 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -193,7 +198,10 @@ export default function AdminClassWorkPage() {
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               {imagePreviews.map((preview, idx) => (
-                <div key={idx} className="relative w-full h-32 border-2 border-gray-300 rounded-lg overflow-hidden">
+                <div
+                  key={idx}
+                  className="relative w-full h-32 border-2 border-gray-300 rounded-lg overflow-hidden"
+                >
                   <img
                     src={preview}
                     alt={`이미지 ${idx + 1}`}
@@ -256,4 +264,3 @@ export default function AdminClassWorkPage() {
     </div>
   );
 }
-

@@ -87,29 +87,81 @@ class SimpleReportService:
         # 리포트 초기화
         report = user_info_section
         
-        # 상담전문가의 FinalAnswer (터미널 출력 형식) 사용
-        professional_report = report_data.image_metadata.get('professional_report', '')
+        # 1. 이미지 관찰 결과
+        if report_data.observation:
+            report += "## 1. 이미지 관찰 결과\n\n"
+            
+            if report_data.observation.colors and len(report_data.observation.colors) > 0:
+                report += "### 색상 분석\n\n"
+                unique_colors = list(dict.fromkeys(report_data.observation.colors[:10]))  # 중복 제거
+                report += "\n".join([f"- {color}" for color in unique_colors])
+                report += "\n\n"
+            
+            if report_data.observation.shapes and len(report_data.observation.shapes) > 0:
+                report += "### 형태 분석\n\n"
+                unique_shapes = list(dict.fromkeys(report_data.observation.shapes[:10]))  # 중복 제거
+                report += "\n".join([f"- {shape}" for shape in unique_shapes])
+                report += "\n\n"
+            
+            if report_data.observation.composition:
+                report += "### 구성\n\n"
+                report += f"{report_data.observation.composition}\n\n"
+            
+            if report_data.observation.details and len(report_data.observation.details) > 0:
+                report += "### 세부사항\n\n"
+                report += "\n".join([f"- {detail}" for detail in report_data.observation.details[:5]])
+                report += "\n\n"
+            
+            if report_data.observation.overall_impression:
+                report += "### 전체 인상\n\n"
+                report += f"{report_data.observation.overall_impression}\n\n"
+            
+            report += "---\n\n"
         
-        # professional_report가 있으면 터미널 출력 형식을 그대로 사용
+        # 2. 감정언어 분석 결과
+        if report_data.emotional_language:
+            report += "## 2. 감정언어 분석 결과\n\n"
+            
+            if report_data.emotional_language.dominant_emotions and len(report_data.emotional_language.dominant_emotions) > 0:
+                report += "### 주요 감정\n\n"
+                emotions_text = ", ".join(report_data.emotional_language.dominant_emotions[:5])
+                report += f"{emotions_text}\n\n"
+            
+            if report_data.emotional_language.emotional_tone:
+                report += "### 감정적 톤\n\n"
+                report += f"{report_data.emotional_language.emotional_tone}\n\n"
+            
+            if report_data.emotional_language.symbolic_elements and len(report_data.emotional_language.symbolic_elements) > 0:
+                report += "### 상징적 요소\n\n"
+                elements_text = ", ".join(report_data.emotional_language.symbolic_elements[:5])
+                report += f"{elements_text}\n\n"
+            
+            if report_data.emotional_language.intensity_level:
+                report += "### 강도 수준\n\n"
+                report += f"{report_data.emotional_language.intensity_level}\n\n"
+            
+            report += "---\n\n"
+        
+        # 3. 미술심리 전문가 종합분석
+        professional_report = report_data.image_metadata.get('professional_report', '') if report_data.image_metadata else ''
+        
         if professional_report:
+            report += "## 3. 미술심리 전문가 종합분석\n\n"
             # 터미널 출력 형식을 리포트에 그대로 반영
             # ==== 이미지 분석 ====, ==== 감정 언어 분석 ====, ==== 종합결론 전문가 종합 평가 ==== 형식
-            report += "\n---\n\n"
             report += professional_report
-            report += "\n"
+            report += "\n\n"
         else:
             # professional_report가 없는 경우, professional_conclusion에서 종합 평가 부분만 추출
             conclusion = report_data.professional_conclusion
-            if conclusion and conclusion.professional_assessment:
-                # professional_assessment가 있으면 종합결론 전문가 종합 평가 형식으로 표시
-                report += "\n---\n\n==== 종합결론 전문가 종합 평가 ====\n"
-                if "결론 파싱 중 오류가 발생했습니다" not in conclusion.professional_assessment:
-                    report += f"{conclusion.professional_assessment}\n"
-            
-            # 나머지 필드들도 표시
             if conclusion:
+                report += "## 3. 미술심리 전문가 종합분석\n\n"
+                
+                if conclusion.professional_assessment and "결론 파싱 중 오류가 발생했습니다" not in conclusion.professional_assessment:
+                    report += f"### 종합 평가\n\n{conclusion.professional_assessment}\n\n"
+                
                 if conclusion.executive_summary and conclusion.executive_summary != "결론 파싱 중 오류가 발생했습니다.":
-                    report += f"\n### 요약 및 핵심 인사이트\n\n{conclusion.executive_summary}\n\n"
+                    report += f"### 요약 및 핵심 인사이트\n\n{conclusion.executive_summary}\n\n"
                 
                 if conclusion.key_findings:
                     report += "### 주요 발견 사항\n\n"
@@ -131,19 +183,10 @@ class SimpleReportService:
                     for rec in conclusion.recommendations:
                         report += f"- {rec}\n"
                     report += "\n"
+            
+            report += "---\n\n"
         
-        # 상담 질문 생성 (reflection_questions 사용)
-        report += "\n---\n\n## 5. 대화로 이어질 수 있는 질문\n\n"
-        if report_data.reflection_questions and report_data.reflection_questions.questions:
-            for question in report_data.reflection_questions.questions[:5]:
-                report += f"• {question}\n"
-        else:
-            report += """• 이 그림에서 가장 좋아하는 부분은 어디인가요?
-• 이 그림을 그릴 때 어떤 생각이 들었나요?
-• 이 그림에 이름을 붙인다면 뭐라고 하고 싶나요?
-"""
-        
-        report += "\n---\n\n⚠ **중요 안내**\n\n본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며,\n심리 진단이나 치료를 목적으로 하지 않습니다.\n"
+        report += "\n⚠ **중요 안내**\n\n본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며,\n심리 진단이나 치료를 목적으로 하지 않습니다.\n"
         
         return report
 

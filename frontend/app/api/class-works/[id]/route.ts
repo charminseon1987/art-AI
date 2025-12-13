@@ -6,7 +6,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
     const response = await fetch(`${pythonBackendUrl}/api/class-works/${id}`, {
       method: "GET",
@@ -30,4 +31,3 @@ export async function GET(
     );
   }
 }
-

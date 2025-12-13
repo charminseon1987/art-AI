@@ -355,7 +355,7 @@ export default function CounselingPage() {
                 {reportData.report.professional_report && (
                   <div className="bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
                     <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <span className="text-2xl">📊</span> 5. 종합 결론 보고서
+                      <span className="text-2xl">📊</span> 3. 종합 결론 보고서
                     </h3>
                     <div
                       className="markdown-content text-gray-800"

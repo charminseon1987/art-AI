@@ -70,7 +70,8 @@ export default function ClassWorkDetailPage() {
     );
   }
 
-  const displayImages = work.images.length > 0 ? work.images : [work.thumbnail_url];
+  const displayImages =
+    work.images.length > 0 ? work.images : [work.thumbnail_url];
 
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
@@ -156,4 +157,3 @@ export default function ClassWorkDetailPage() {
     </div>
   );
 }
-

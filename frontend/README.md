@@ -68,6 +68,7 @@ uvicorn api_server:app --reload --port 8000
 ```
 
 백엔드 API 엔드포인트:
+
 - `POST /api/analyze-image` - 이미지 분석
 - `GET /api/reports` - 리포트 목록
 - `GET /api/reports/{report_id}` - 리포트 조회

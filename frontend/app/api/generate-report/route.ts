@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
     const backendFormData = new FormData();
     backendFormData.append("report_id", reportId);
@@ -39,4 +40,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -62,7 +62,7 @@ macOS에서는 `python3`를 사용하거나 `uv run python`을 사용하세요.
 ### 포트가 이미 사용 중입니다
 
 다른 포트를 사용하려면:
+
 ```bash
 uv run uvicorn api_server:app --reload --port 8001
 ```
-

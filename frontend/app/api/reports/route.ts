@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
     const response = await fetch(`${pythonBackendUrl}/api/reports`, {
       method: "GET",
@@ -26,4 +27,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

@@ -14,14 +14,18 @@ export async function GET(
       );
     }
 
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
-    const response = await fetch(`${pythonBackendUrl}/api/reports/${reportId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${pythonBackendUrl}/api/reports/${reportId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -38,4 +42,3 @@ export async function GET(
     );
   }
 }
-

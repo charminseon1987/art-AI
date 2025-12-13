@@ -21,14 +21,18 @@ export default function ReportDisplay({ reportData }: ReportDisplayProps) {
         </h4>
         <ul className="space-y-2 text-gray-700">
           {observation.colors && observation.colors.length > 0 && (
-            <li>• 여러 색이 자유롭게 사용되어 있음 ({observation.colors.slice(0, 3).join(", ")})</li>
+            <li>
+              • 여러 색이 자유롭게 사용되어 있음 (
+              {observation.colors.slice(0, 3).join(", ")})
+            </li>
           )}
           {observation.shapes && observation.shapes.length > 0 && (
-            <li>• 선의 움직임이 다양하게 나타남 ({observation.shapes.slice(0, 2).join(", ")})</li>
+            <li>
+              • 선의 움직임이 다양하게 나타남 (
+              {observation.shapes.slice(0, 2).join(", ")})
+            </li>
           )}
-          {observation.composition && (
-            <li>• 화면 공간을 비교적 넓게 활용함</li>
-          )}
+          {observation.composition && <li>• 화면 공간을 비교적 넓게 활용함</li>}
         </ul>
       </div>
 
@@ -55,9 +59,14 @@ export default function ReportDisplay({ reportData }: ReportDisplayProps) {
           이야기로 이어질 수 있는 질문
         </h4>
         <ol className="space-y-2 text-gray-700 list-decimal list-inside">
-          {reflectionQuestions.questions && reflectionQuestions.questions.slice(0, 5).map((q: string, idx: number) => (
-            <li key={idx} className="ml-4">{q}</li>
-          ))}
+          {reflectionQuestions.questions &&
+            reflectionQuestions.questions
+              .slice(0, 5)
+              .map((q: string, idx: number) => (
+                <li key={idx} className="ml-4">
+                  {q}
+                </li>
+              ))}
         </ol>
       </div>
 
@@ -71,4 +80,3 @@ export default function ReportDisplay({ reportData }: ReportDisplayProps) {
     </div>
   );
 }
-

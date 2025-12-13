@@ -7,15 +7,13 @@ export async function POST(request: NextRequest) {
     const emotion = formData.get("emotion") as string | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "파일이 없습니다." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
     }
 
     // Python 백엔드 API 호출
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-    
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+
     const backendFormData = new FormData();
     backendFormData.append("file", file);
     if (emotion) {

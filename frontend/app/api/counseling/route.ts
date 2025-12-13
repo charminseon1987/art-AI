@@ -11,15 +11,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const pythonBackendUrl =
+      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
-    const response = await fetch(`${pythonBackendUrl}/api/reports/${reportId}/counseling`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(responses),
-    });
+    const response = await fetch(
+      `${pythonBackendUrl}/api/reports/${reportId}/counseling`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(responses),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -36,4 +40,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

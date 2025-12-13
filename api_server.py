@@ -253,6 +253,94 @@ async def get_reports():
         )
 
 
+@app.post("/api/reports/{report_id}/counselor-answers")
+async def save_counselor_answers(report_id: str, answers: dict):
+    """상담사 답변 저장 및 종합 분석 생성"""
+    try:
+        # 리포트 로드
+        report_data = report_service.load_report(report_id)
+        if not report_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "리포트를 찾을 수 없습니다."}
+            )
+        
+        # 상담사 답변 저장
+        counselor_answers = answers.get("answers", {})
+        report_data.image_metadata = report_data.image_metadata or {}
+        report_data.image_metadata["counselor_answers"] = counselor_answers
+        
+        # 상담사 답변이 있으면 AI 종합 분석 생성
+        if counselor_answers:
+            try:
+                from agents.conclusion_agent import ConclusionAgent
+                from langchain_openai import ChatOpenAI
+                from services.scraping_service import ArtTherapyScrapingService
+                import os
+                
+                # ConclusionAgent 생성 (참고 자료 포함)
+                llm = ChatOpenAI(
+                    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                    temperature=0.7
+                )
+                scraping_service = ArtTherapyScrapingService()
+                reference_material = scraping_service.get_reference_material()
+                conclusion_agent = ConclusionAgent(llm, reference_material=reference_material)
+                
+                # 상담사 답변을 바탕으로 종합 분석 생성
+                # 상담사 답변을 chat_responses 형식으로 변환
+                counselor_responses = []
+                if report_data.reflection_questions and report_data.reflection_questions.questions:
+                    for idx, question in enumerate(report_data.reflection_questions.questions):
+                        if idx in counselor_answers and counselor_answers[idx]:
+                            counselor_responses.append({
+                                "question": question,
+                                "answer": counselor_answers[idx]
+                            })
+                
+                # 종합 분석 생성
+                conclusion_task = conclusion_agent.create_conclusion_task(
+                    report_data.observation,
+                    report_data.emotional_language,
+                    report_data.reflection_questions,
+                    report_data.user_emotion,
+                    chat_responses=counselor_responses if counselor_responses else None
+                )
+                
+                from crewai import Crew, Process
+                conclusion_crew = Crew(
+                    agents=[conclusion_agent.agent],
+                    tasks=[conclusion_task],
+                    process=Process.sequential,
+                    verbose=True
+                )
+                conclusion_result = conclusion_crew.kickoff()
+                
+                # 상담사 답변 기반 종합 분석 저장
+                report_data.image_metadata["counselor_based_analysis"] = str(conclusion_result)
+                
+            except Exception as e:
+                import traceback
+                print(f"상담사 답변 기반 종합 분석 생성 오류: {traceback.format_exc()}")
+                # 오류 발생 시에도 답변은 저장
+        
+        # 리포트 저장
+        report_service.save_report(report_data)
+        
+        return {
+            "success": True,
+            "message": "상담사 답변이 저장되었습니다."
+        }
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"상담사 답변 저장 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"답변 저장 실패: {str(e)}"}
+        )
+
+
 @app.get("/api/reports/{report_id}")
 async def get_report(report_id: str):
     """특정 리포트 조회"""
@@ -568,6 +656,78 @@ async def generate_pdf_report(report_id: str):
         import traceback
         error_trace = traceback.format_exc()
         print(f"PDF 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"PDF 생성 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/reports/{report_id}/admin-pdf")
+async def generate_admin_pdf_report(report_id: str):
+    """관리자용 전문 리포트 PDF 생성"""
+    try:
+        from fastapi.responses import StreamingResponse
+        from io import BytesIO
+        from services.admin_report_service import AdminReportService
+        
+        # 리포트 로드
+        report_data = report_service.load_report(report_id)
+        if not report_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "리포트를 찾을 수 없습니다."}
+            )
+        
+        # 관리자용 전문 리포트 마크다운 생성
+        admin_report_service = AdminReportService()
+        try:
+            admin_report_markdown = admin_report_service.generate_admin_report_markdown(report_data)
+        except Exception as e:
+            import traceback
+            print(f"관리자 리포트 생성 오류: {traceback.format_exc()}")
+            raise Exception(f"리포트 생성 실패: {str(e)}")
+        
+        # PDF 생성 (이미지 포함)
+        try:
+            # base64 이미지 가져오기
+            image_base64 = report_data.image_metadata.get("base64", None) if report_data.image_metadata else None
+            
+            pdf_content = report_service.generate_pdf_from_markdown(
+                admin_report_markdown,
+                title="전문 리포트",
+                image_base64=image_base64
+            )
+        except Exception as e:
+            import traceback
+            print(f"PDF 생성 오류: {traceback.format_exc()}")
+            raise Exception(f"PDF 생성 실패: {str(e)}")
+        
+        # 파일명 생성 (한글 파일명 인코딩 처리)
+        date_str = report_data.created_at.strftime('%Y%m%d_%H%M%S')
+        report_id_short = report_data.id[:8] if report_data.id else "unknown"
+        filename_kr = f"전문리포트_{date_str}_{report_id_short}.pdf"
+        filename_en = f"professional_report_{date_str}_{report_id_short}.pdf"
+        
+        # RFC 5987 형식으로 한글 파일명 인코딩
+        from urllib.parse import quote
+        filename_encoded = quote(filename_kr, safe='', encoding='utf-8')
+        
+        # Content-Disposition 헤더 생성 (한글 파일명 지원)
+        content_disposition = f'attachment; filename="{filename_en}"; filename*=UTF-8\'\'{filename_encoded}'
+        
+        pdf_stream = BytesIO(pdf_content)
+        
+        return StreamingResponse(
+            pdf_stream,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": content_disposition
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"관리자 PDF 생성 오류: {error_trace}")
         return JSONResponse(
             status_code=500,
             content={"error": f"PDF 생성 실패: {str(e)}"}

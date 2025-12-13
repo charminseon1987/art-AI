@@ -31,12 +31,16 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
     setUploading(true);
     try {
-      const emotion = userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
+      const emotion =
+        userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
       const data = await analyzeImage(selectedFile, emotion);
       onUploadComplete(data);
     } catch (error: any) {
       console.error("Upload error:", error);
-      const errorMessage = error.message || error.response?.data?.error || "업로드 중 오류가 발생했습니다.";
+      const errorMessage =
+        error.message ||
+        error.response?.data?.error ||
+        "업로드 중 오류가 발생했습니다.";
       alert(errorMessage);
     } finally {
       setUploading(false);
@@ -64,9 +68,12 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               <Upload className="w-10 h-10 mb-3 text-gray-400" />
               <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">클릭하여 업로드</span> 또는 드래그 앤 드롭
+                <span className="font-semibold">클릭하여 업로드</span> 또는
+                드래그 앤 드롭
               </p>
-              <p className="text-xs text-gray-500">PNG, JPG, JPEG (최대 10MB)</p>
+              <p className="text-xs text-gray-500">
+                PNG, JPG, JPEG (최대 10MB)
+              </p>
             </div>
             <input
               type="file"
@@ -118,4 +125,3 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     </div>
   );
 }
-
