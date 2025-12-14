@@ -16,6 +16,7 @@ from services.report_service import ReportService
 from services.report_generator_service import ReportGeneratorService
 from services.simple_report_service import SimpleReportService
 from services.class_work_service import ClassWorkService
+from services.fingerprint_service import FingerprintService
 from models.class_work import ClassWork
 from langchain_openai import ChatOpenAI
 from utils.setup import setup_directories
@@ -28,9 +29,19 @@ setup_directories()
 app = FastAPI(title="AI 그림 상담 API", version="1.0.0")
 
 # CORS 설정
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# 프로덕션 프론트엔드 URL 추가 (환경 변수에서 읽기)
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +58,7 @@ ai_service = AIService(llm)
 report_service = ReportService()
 simple_report_service = SimpleReportService(llm)
 class_work_service = ClassWorkService()
+fingerprint_service = FingerprintService(llm, image_service)
 
 # ReportGeneratorService 초기화 (에러 발생 시에도 서버가 시작되도록)
 try:
@@ -629,6 +641,60 @@ async def get_fingerprint_data():
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
+        )
+
+
+@app.post("/api/analyze-fingerprint")
+async def analyze_fingerprint(file: UploadFile = File(...)):
+    """엄지 지문 분석 API"""
+    try:
+        # 파일 읽기
+        contents = await file.read()
+        
+        if not contents or len(contents) == 0:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "파일이 비어있습니다"}
+            )
+        
+        file_obj = BytesIO(contents)
+        file_obj.name = file.filename or "fingerprint.jpg"
+        
+        print(f"지문 분석 시작: 파일명={file.filename}, 크기={len(contents)} bytes")
+        
+        # 지문 분석
+        result = fingerprint_service.analyze_thumb_fingerprint(file_obj)
+        
+        print(f"지문 분석 결과: success={result.get('success')}")
+        
+        if not result.get("success"):
+            error_msg = result.get("error", "지문 분석 실패")
+            print(f"지문 분석 실패: {error_msg}")
+            return JSONResponse(
+                status_code=400,
+                content={"error": error_msg}
+            )
+        
+        analysis = result.get("analysis", {})
+        if not analysis:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "분석 결과가 비어있습니다"}
+            )
+        
+        print(f"지문 분석 성공: 패턴={analysis.get('pattern_type', '알 수 없음')}")
+        
+        return {
+            "success": True,
+            "analysis": analysis
+        }
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"지문 분석 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"지문 분석 중 오류가 발생했습니다: {str(e)}"}
         )
 
 

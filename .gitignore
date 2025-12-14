@@ -36,11 +36,20 @@ ENV/
 # Environment variables
 .env
 .env.local
+.env.*.local
+!.env.example
+!.env.production
 
 # Data
 data/
-*.json
+data/*.json
 *.pdf
+
+# 배포 설정 파일은 포함
+!railway.json
+!package.json
+!package-lock.json
+!tsconfig.json
 
 # Streamlit
 .streamlit/

@@ -9,6 +9,12 @@ const nextConfig = {
         port: "8000",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.railway.app",
+        pathname: "/**",
+      },
+      // 다른 프로덕션 도메인 추가 시 여기에 추가
     ],
   },
 };
