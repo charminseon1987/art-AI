@@ -13,6 +13,8 @@ import {
   X,
   Send,
   MessageCircle,
+  Upload,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -49,6 +51,11 @@ export default function FingerprintPage() {
     Array<{ role: "user" | "assistant"; content: string; timestamp: Date }>
   >([]);
   const [inputMessage, setInputMessage] = useState("");
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     // 스크래핑 서비스를 통해 데이터 가져오기
@@ -118,6 +125,90 @@ export default function FingerprintPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  const handleAnalyzeFingerprint = async () => {
+    if (!selectedFile) {
+      alert("엄지 지문 사진을 선택해주세요.");
+      return;
+    }
+
+    // 파일 크기 확인 (10MB 제한)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      alert("파일 크기는 10MB 이하여야 합니다.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setIsAnalysisModalOpen(true);
+    setAnalysisResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      console.log("지문 분석 시작:", selectedFile.name, selectedFile.size);
+
+      const response = await fetch("/api/analyze-fingerprint", {
+        method: "POST",
+        body: formData,
+        // 타임아웃 설정은 브라우저에서 직접 할 수 없으므로 서버에서 처리
+      });
+
+      console.log("응답 상태:", response.status, response.statusText);
+
+      if (!response.ok) {
+        let errorMessage = "분석 실패";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            `서버 오류 (${response.status})`;
+          console.error("서버 오류 응답:", errorData);
+        } catch (e) {
+          errorMessage = `서버 오류 (${response.status}): ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log("분석 결과:", data);
+
+      if (data.success && data.analysis) {
+        setAnalysisResult(data.analysis);
+      } else {
+        throw new Error(data.error || "분석 결과를 받지 못했습니다");
+      }
+    } catch (error: any) {
+      console.error("분석 오류 상세:", error);
+      const errorMessage = error.message || "알 수 없는 오류가 발생했습니다";
+      alert(
+        `분석 중 오류가 발생했습니다:\n${errorMessage}\n\n콘솔을 확인해주세요.`
+      );
+      setIsAnalysisModalOpen(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const closeAnalysisModal = () => {
+    setIsAnalysisModalOpen(false);
+    setAnalysisResult(null);
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
   };
 
@@ -401,96 +492,90 @@ export default function FingerprintPage() {
           </div>
         )}
 
-        {/* 블로그 콘텐츠 섹션 */}
-        {fingerprintData?.blog_content && (
-          <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              {fingerprintData.blog_content.title || "지문상담 관련 정보"}
-            </h2>
+        {/* AI 주성향 파악 */}
+        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Brain className="w-6 h-6 text-blue-600" />
+            AI 주성향 파악
+          </h2>
+          <p className="text-lg text-gray-700 mb-6">
+            엄지 손가락의 지문 사진을 업로드하면 AI가 지문 패턴을 분석하여 주된
+            성격 특성을 파악해드립니다.
+          </p>
 
-            {/* 블로그 이미지 갤러리 */}
-            {fingerprintData.blog_content.images &&
-              fingerprintData.blog_content.images.length > 0 && (
-                <div className="grid md:grid-cols-2 gap-4 mb-6">
-                  {fingerprintData.blog_content.images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200"
-                    >
-                      <img
-                        src={img.src}
-                        alt={img.alt || `지문 패턴 이미지 ${idx + 1}`}
-                        className="w-full h-auto object-contain max-h-96"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = "none";
-                        }}
-                      />
-                      {img.alt && (
-                        <p className="p-2 text-sm text-gray-600 text-center bg-white">
-                          {img.alt}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4">
+            {previewUrl ? (
+              <div className="space-y-4">
+                <div className="relative inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="업로드된 지문"
+                    className="max-w-full max-h-64 rounded-lg shadow-md"
+                  />
                 </div>
-              )}
-
-            {/* 블로그 텍스트 내용 */}
-            {fingerprintData.blog_content.text_content &&
-              fingerprintData.blog_content.text_content.length > 0 && (
-                <div className="space-y-4 mb-6">
-                  {fingerprintData.blog_content.text_content.map(
-                    (text, idx) => (
-                      <p
-                        key={idx}
-                        className="text-gray-700 leading-relaxed text-lg"
-                      >
-                        {text}
-                      </p>
-                    )
-                  )}
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (previewUrl) {
+                        URL.revokeObjectURL(previewUrl);
+                        setPreviewUrl(null);
+                      }
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800 underline"
+                  >
+                    다른 사진 선택
+                  </button>
                 </div>
-              )}
-
-            {/* 블로그 섹션 */}
-            {fingerprintData.blog_content.sections &&
-              fingerprintData.blog_content.sections.length > 0 && (
-                <div className="space-y-6">
-                  {fingerprintData.blog_content.sections.map((section, idx) => (
-                    <div
-                      key={idx}
-                      className="border-l-4 border-blue-500 pl-6 py-4 bg-blue-50 rounded-r-lg"
-                    >
-                      {section.title && (
-                        <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                          {section.title}
-                        </h3>
-                      )}
-                      {section.image && (
-                        <div className="mb-4">
-                          <img
-                            src={section.image}
-                            alt={section.title || `섹션 이미지 ${idx + 1}`}
-                            className="max-w-full h-auto rounded-lg shadow-md"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                            }}
-                          />
-                        </div>
-                      )}
-                      {section.content && (
-                        <p className="text-gray-700 leading-relaxed">
-                          {section.content}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ImageIcon className="w-16 h-16 text-gray-400 mx-auto" />
+                <div>
+                  <label
+                    htmlFor="fingerprint-upload"
+                    className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                  >
+                    <Upload className="w-5 h-5" />
+                    엄지 지문 사진 업로드
+                  </label>
+                  <input
+                    id="fingerprint-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
                 </div>
-              )}
+                <p className="text-sm text-gray-500">
+                  JPG, PNG 형식의 이미지를 업로드해주세요
+                </p>
+              </div>
+            )}
           </div>
-        )}
+
+          {selectedFile && (
+            <div className="text-center">
+              <button
+                onClick={handleAnalyzeFingerprint}
+                disabled={isAnalyzing}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    분석 중...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-5 h-5" />
+                    AI 주성향 분석 시작
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* 지문상담 신청 */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-8 text-white text-center mb-8">
@@ -516,6 +601,415 @@ export default function FingerprintPage() {
           </div>
         </div>
       </div>
+
+      {/* 분석 결과 모달 */}
+      {isAnalysisModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                <h3 className="font-semibold text-lg">엄지 주성향 분석 결과</h3>
+              </div>
+              <button
+                onClick={closeAnalysisModal}
+                className="hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 모달 내용 */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                  <p className="text-gray-700 text-lg">
+                    지문 패턴을 분석하고 있습니다...
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    잠시만 기다려주세요
+                  </p>
+                </div>
+              ) : analysisResult ? (
+                <div className="space-y-6">
+                  {/* 업로드된 지문 이미지 */}
+                  {previewUrl && (
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg shadow-lg p-6 border-2 border-gray-200">
+                      <h4 className="text-xl font-bold text-gray-800 mb-4 text-center flex items-center justify-center gap-2">
+                        <ImageIcon className="w-5 h-5 text-blue-600" />
+                        분석된 엄지 지문
+                      </h4>
+                      <div className="flex justify-center bg-white p-4 rounded-lg shadow-inner">
+                        <div className="relative inline-block">
+                          <div className="relative">
+                            <img
+                              src={previewUrl}
+                              alt="분석된 지문"
+                              className="max-w-full max-h-96 rounded-lg shadow-xl border-4 border-blue-200 object-contain"
+                              style={{
+                                filter:
+                                  "contrast(1.3) brightness(0.9) grayscale(0.1)",
+                              }}
+                              id="fingerprint-image"
+                            />
+                            {/* 투명 빨간색 패턴 오버레이 */}
+                            <svg
+                              className="absolute inset-0 w-full h-full pointer-events-none"
+                              style={{
+                                mixBlendMode: "multiply",
+                              }}
+                              viewBox="0 0 100 100"
+                              preserveAspectRatio="none"
+                            >
+                              {/* 중심점 표시 - 크기 증가 */}
+                              <circle
+                                cx="50"
+                                cy="50"
+                                r="6"
+                                fill="rgba(255, 0, 0, 0.5)"
+                                stroke="rgba(255, 0, 0, 0.8)"
+                                strokeWidth="1.5"
+                              />
+                              {/* 나선형 패턴 표시 - 크기 증가 */}
+                              {(analysisResult.pattern_type === "나선형" ||
+                                analysisResult.pattern_type === "정기문") && (
+                                <>
+                                  <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="18"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.6)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="28"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="38"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="45"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.3)"
+                                    strokeWidth="1"
+                                    strokeDasharray="3,3"
+                                  />
+                                </>
+                              )}
+                              {/* 두형문 패턴 표시 - 크기 증가 */}
+                              {analysisResult.pattern_type === "두형문" && (
+                                <>
+                                  <circle
+                                    cx="35"
+                                    cy="50"
+                                    r="8"
+                                    fill="rgba(255, 0, 0, 0.4)"
+                                    stroke="rgba(255, 0, 0, 0.7)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <circle
+                                    cx="65"
+                                    cy="50"
+                                    r="8"
+                                    fill="rgba(255, 0, 0, 0.4)"
+                                    stroke="rgba(255, 0, 0, 0.7)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <circle
+                                    cx="35"
+                                    cy="50"
+                                    r="18"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="35"
+                                    cy="50"
+                                    r="28"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="65"
+                                    cy="50"
+                                    r="18"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="65"
+                                    cy="50"
+                                    r="28"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1"
+                                    strokeDasharray="3,3"
+                                  />
+                                </>
+                              )}
+                              {/* 고리형 패턴 표시 - 크기 증가 */}
+                              {analysisResult.pattern_type === "고리형" && (
+                                <>
+                                  <path
+                                    d="M 50 25 Q 75 50, 50 75 Q 25 50, 50 25"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.6)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <path
+                                    d="M 50 20 Q 80 50, 50 80 Q 20 50, 50 20"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="4,4"
+                                  />
+                                </>
+                              )}
+                              {/* 호형 패턴 표시 - 크기 증가 */}
+                              {analysisResult.pattern_type === "호형" && (
+                                <>
+                                  <path
+                                    d="M 15 65 Q 50 35, 85 65"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.6)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <path
+                                    d="M 10 70 Q 50 30, 90 70"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="4,4"
+                                  />
+                                </>
+                              )}
+                              {/* 쌍기문 패턴 표시 - 크기 증가 */}
+                              {analysisResult.pattern_type === "쌍기문" && (
+                                <>
+                                  <circle
+                                    cx="42"
+                                    cy="50"
+                                    r="7"
+                                    fill="rgba(255, 0, 0, 0.5)"
+                                    stroke="rgba(255, 0, 0, 0.8)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <circle
+                                    cx="58"
+                                    cy="50"
+                                    r="7"
+                                    fill="rgba(255, 0, 0, 0.5)"
+                                    stroke="rgba(255, 0, 0, 0.8)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <circle
+                                    cx="42"
+                                    cy="50"
+                                    r="15"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                  <circle
+                                    cx="58"
+                                    cy="50"
+                                    r="15"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                </>
+                              )}
+                              {/* 반기문 패턴 표시 - 크기 증가 */}
+                              {analysisResult.pattern_type === "반기문" && (
+                                <>
+                                  <path
+                                    d="M 50 50 A 18 18 0 0 1 75 50"
+                                    fill="rgba(255, 0, 0, 0.5)"
+                                    stroke="rgba(255, 0, 0, 0.8)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <path
+                                    d="M 50 50 A 25 25 0 0 1 80 50"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.4)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="4,4"
+                                  />
+                                </>
+                              )}
+                              {/* 호형문 패턴 표시 */}
+                              {analysisResult.pattern_type === "호형문" && (
+                                <>
+                                  <path
+                                    d="M 15 65 Q 50 35, 85 65"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.6)"
+                                    strokeWidth="1.5"
+                                  />
+                                  <path
+                                    d="M 50 25 Q 75 50, 50 75"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="3,3"
+                                  />
+                                </>
+                              )}
+                              {/* 복합형 패턴 표시 */}
+                              {analysisResult.pattern_type === "복합형" && (
+                                <>
+                                  <circle
+                                    cx="50"
+                                    cy="50"
+                                    r="20"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                    strokeDasharray="4,4"
+                                  />
+                                  <path
+                                    d="M 50 30 Q 70 50, 50 70"
+                                    fill="none"
+                                    stroke="rgba(255, 0, 0, 0.5)"
+                                    strokeWidth="1.2"
+                                  />
+                                </>
+                              )}
+                            </svg>
+                          </div>
+                          <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg z-10">
+                            {analysisResult.pattern_type}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-center text-sm text-gray-600 mt-4">
+                        위 지문 패턴을 분석한 결과입니다
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 패턴 유형 */}
+                  <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                    <h4 className="text-xl font-bold text-gray-800 mb-2">
+                      지문 패턴 유형
+                    </h4>
+                    <p className="text-2xl font-semibold text-blue-600 mb-2">
+                      {analysisResult.pattern_type}
+                    </p>
+                    <p className="text-gray-600 text-sm">
+                      신뢰도: {analysisResult.confidence}
+                    </p>
+                  </div>
+
+                  {/* 성격 특성 */}
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <h4 className="text-xl font-bold text-gray-800 mb-4">
+                      엄지 주성격 분석
+                    </h4>
+                    <p className="text-gray-700 mb-4 leading-relaxed">
+                      엄지손가락의 지문 패턴은 개인의 주된 성격 특성을 나타내는
+                      중요한 지표입니다.
+                    </p>
+                    <div className="mb-4">
+                      <h5 className="font-semibold text-gray-800 mb-2">
+                        {analysisResult.pattern_type} 패턴의 특성:
+                      </h5>
+                      <div className="flex flex-wrap gap-2">
+                        {analysisResult.personality_traits?.map(
+                          (trait: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                            >
+                              {trait}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h5 className="font-semibold text-gray-800 mb-2">
+                        학습 스타일:
+                      </h5>
+                      <p className="text-gray-700 leading-relaxed">
+                        {analysisResult.learning_style}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 분석 요약 */}
+                  {analysisResult.analysis_summary && (
+                    <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-400">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                        분석 요약
+                      </h4>
+                      <p className="text-gray-700 leading-relaxed">
+                        {analysisResult.analysis_summary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 패턴 설명 */}
+                  {analysisResult.pattern_description && (
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                        패턴 상세 설명
+                      </h4>
+                      <p className="text-gray-700 leading-relaxed text-sm">
+                        {analysisResult.pattern_description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 심층상담 버튼 */}
+                  <div className="flex gap-4 pt-4">
+                    <Link
+                      href="/consultation"
+                      onClick={closeAnalysisModal}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 text-center"
+                    >
+                      심층상담 신청하기
+                    </Link>
+                    <button
+                      onClick={closeAnalysisModal}
+                      className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 채팅 모달 */}
       {isChatOpen && (
