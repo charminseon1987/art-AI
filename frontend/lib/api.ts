@@ -230,3 +230,89 @@ export async function saveCounselorAnswers(
     );
   }
 }
+
+export interface ContactInquiry {
+  id: string;
+  name: string;
+  phone: string;
+  child_age: string;
+  message: string;
+  created_at: string;
+  status: string;
+}
+
+export async function submitContact(
+  name: string,
+  phone: string,
+  childAge: string,
+  message: string
+): Promise<{ success: boolean; message: string; contact_id: string }> {
+  try {
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("phone", phone);
+    formData.append("child_age", childAge);
+    formData.append("message", message);
+
+    const response = await axios.post(`/api/contact`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("문의 API 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "문의 접수 중 오류가 발생했습니다."
+    );
+  }
+}
+
+export async function getContacts(): Promise<{
+  success: boolean;
+  contacts: ContactInquiry[];
+}> {
+  try {
+    const token = sessionStorage.getItem("admin_token");
+    const response = await axios.get(`/api/contacts`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("문의 목록 API 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "문의 목록을 가져올 수 없습니다."
+    );
+  }
+}
+
+export async function updateContactStatus(
+  contactId: string,
+  status: string
+): Promise<{ success: boolean; contact: ContactInquiry }> {
+  const pythonBackendUrl =
+    process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
+  const url = `${pythonBackendUrl}/api/contacts/${contactId}/status`;
+  const token = sessionStorage.getItem("admin_token");
+
+  try {
+    const formData = new FormData();
+    formData.append("status", status);
+
+    const response = await axios.patch(url, formData, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("문의 상태 업데이트 오류:", error);
+    throw new Error(
+      error.response?.data?.error ||
+        error.message ||
+        "문의 상태 업데이트 중 오류가 발생했습니다."
+    );
+  }
+}

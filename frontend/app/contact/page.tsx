@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Calendar, Send, MailOpen, PhoneCall } from "lucide-react";
+import {
+  MessageCircle,
+  Calendar,
+  Send,
+  MailOpen,
+  PhoneCall,
+} from "lucide-react";
+import { submitContact } from "@/lib/api";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -10,11 +17,34 @@ export default function ContactPage() {
     childAge: "",
     message: "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API 호출
-    alert("문의가 접수되었습니다. 빠른 시일 내에 연락드리겠습니다.");
+    setSubmitting(true);
+
+    try {
+      await submitContact(
+        formData.name,
+        formData.phone,
+        formData.childAge,
+        formData.message
+      );
+
+      alert("문의가 접수되었습니다. 빠른 시일 내에 연락드리겠습니다.");
+
+      // 폼 초기화
+      setFormData({
+        name: "",
+        phone: "",
+        childAge: "",
+        message: "",
+      });
+    } catch (error: any) {
+      alert("문의 접수 중 오류가 발생했습니다: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -34,9 +64,11 @@ export default function ContactPage() {
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-8 rounded-2xl shadow-lg border border-amber-100 text-center hover:shadow-xl transition-all duration-300">
             <MailOpen className="w-16 h-16 text-amber-500 mx-auto mb-4 animate-pulse" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">이메일 문의</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+              이메일 문의
+            </h3>
             <p className="text-gray-600 mb-4 text-sm">
-              lovetree914@naver.com
+              문의 사항은 이메일로 보내주세요.
             </p>
             <a
               href="mailto:lovetree914@naver.com?subject=미술 수업 문의&body=안녕하세요. 문의드립니다."
@@ -51,7 +83,7 @@ export default function ContactPage() {
             <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
             <h3 className="text-2xl font-bold text-gray-800 mb-4">전화 상담</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              010-4159-1102
+              전화 상담은 오전 10시부터 오후 5시까지 가능합니다.
             </p>
             <a
               href="tel:010-4159-1102"
@@ -81,6 +113,7 @@ export default function ContactPage() {
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
+                style={{ color: "black" }}
               />
             </div>
 
@@ -96,6 +129,7 @@ export default function ContactPage() {
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
+                style={{ color: "black" }}
               />
             </div>
 
@@ -110,6 +144,7 @@ export default function ContactPage() {
                 }
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
+                style={{ color: "black" }}
               >
                 <option value="">선택하세요</option>
                 <option>5세</option>
@@ -135,14 +170,16 @@ export default function ContactPage() {
                 rows={6}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                 required
+                style={{ color: "black" }}
               />
             </div>
 
             <button
               type="submit"
-              className="group w-full bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:from-pink-600 hover:to-fuchsia-700 text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform flex items-center justify-center gap-2"
+              disabled={submitting}
+              className="group w-full bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:from-pink-600 hover:to-fuchsia-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform flex items-center justify-center gap-2"
             >
-              문의하기
+              {submitting ? "접수 중..." : "문의하기"}
               <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </form>

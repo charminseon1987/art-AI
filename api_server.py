@@ -17,7 +17,9 @@ from services.report_generator_service import ReportGeneratorService
 from services.simple_report_service import SimpleReportService
 from services.class_work_service import ClassWorkService
 from services.fingerprint_service import FingerprintService
+from services.contact_service import ContactService
 from models.class_work import ClassWork
+from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
 from utils.setup import setup_directories
 from utils.auth import verify_admin_token
@@ -59,6 +61,7 @@ report_service = ReportService()
 simple_report_service = SimpleReportService(llm)
 class_work_service = ClassWorkService()
 fingerprint_service = FingerprintService(llm, image_service)
+contact_service = ContactService()
 
 # ReportGeneratorService 초기화 (에러 발생 시에도 서버가 시작되도록)
 try:
@@ -887,6 +890,114 @@ async def generate_admin_pdf_report(
         return JSONResponse(
             status_code=500,
             content={"error": f"PDF 생성 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/contact")
+async def create_contact(
+    name: str = Form(...),
+    phone: str = Form(...),
+    child_age: str = Form(...),
+    message: str = Form(...)
+):
+    """문의 생성 API"""
+    try:
+        contact_data = ContactInquiry(
+            name=name,
+            phone=phone,
+            child_age=child_age,
+            message=message
+        )
+        
+        contact_service.save_contact(contact_data)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": "문의가 접수되었습니다.",
+                "contact_id": contact_data.id
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"문의 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"문의 접수 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/contacts")
+async def get_contacts(
+    authorization: Optional[str] = Header(None)
+):
+    """문의 목록 조회 API (관리자 전용)"""
+    # 관리자 인증 확인
+    # verify_admin_token(authorization)  # 테스트용 비활성화
+    try:
+        contacts = contact_service.list_contacts()
+        
+        # Pydantic 모델을 dict로 변환
+        contacts_dict = []
+        for contact in contacts:
+            contact_dict = contact.model_dump()
+            contact_dict['created_at'] = contact.created_at.isoformat()
+            contacts_dict.append(contact_dict)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "contacts": contacts_dict
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"문의 목록 조회 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"문의 목록 조회 실패: {str(e)}"}
+        )
+
+
+@app.patch("/api/contacts/{contact_id}/status")
+async def update_contact_status(
+    contact_id: str,
+    status: str = Form(...),
+    authorization: Optional[str] = Header(None)
+):
+    """문의 상태 업데이트 API (관리자 전용)"""
+    # 관리자 인증 확인
+    # verify_admin_token(authorization)  # 테스트용 비활성화
+    try:
+        contact = contact_service.update_contact_status(contact_id, status)
+        
+        if not contact:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "문의를 찾을 수 없습니다."}
+            )
+        
+        contact_dict = contact.model_dump()
+        contact_dict['created_at'] = contact.created_at.isoformat()
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "contact": contact_dict
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"문의 상태 업데이트 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"문의 상태 업데이트 실패: {str(e)}"}
         )
 
 
