@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Calendar, Send } from "lucide-react";
-import { KAKAO_CHANNEL_URL, NAVER_BOOKING_URL } from "@/lib/constants";
+import { MessageCircle, Calendar, Send, MailOpen, PhoneCall } from "lucide-react";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -33,37 +32,39 @@ export default function ContactPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <MessageCircle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">카카오채널</h3>
+          <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-8 rounded-2xl shadow-lg border border-amber-100 text-center hover:shadow-xl transition-all duration-300">
+            <MailOpen className="w-16 h-16 text-amber-500 mx-auto mb-4 animate-pulse" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">이메일 문의</h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              lovetree914@naver.com
+            </p>
             <a
-              href={KAKAO_CHANNEL_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-6 py-3 rounded-lg font-semibold transition-colors"
+              href="mailto:lovetree914@naver.com?subject=미술 수업 문의&body=안녕하세요. 문의드립니다."
+              className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-gray-800 px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
             >
-              카카오톡으로 문의
+              <MailOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>이메일 보내기</span>
             </a>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <Calendar className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 mb-2">
-              네이버 예약
-            </h3>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl shadow-lg border border-green-100 text-center hover:shadow-xl transition-all duration-300">
+            <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">전화 상담</h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              010-4159-1102
+            </p>
             <a
-              href={NAVER_BOOKING_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              href="tel:010-4159-1102"
+              className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
             >
-              네이버 예약하기
+              <PhoneCall className="w-5 h-5 group-hover:rotate-12 group-hover:scale-110 transition-transform" />
+              <span>전화 걸기</span>
             </a>
           </div>
         </div>
 
         {/* 간단 문의 폼 */}
-        <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-gradient-to-br from-pink-50 to-rose-50 p-8 rounded-2xl shadow-lg border border-pink-100">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
             간단 문의 폼
           </h2>
@@ -78,7 +79,7 @@ export default function ContactPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
               />
             </div>
@@ -93,7 +94,7 @@ export default function ContactPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
               />
             </div>
@@ -107,7 +108,7 @@ export default function ContactPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, childAge: e.target.value })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 required
               >
                 <option value="">선택하세요</option>
@@ -139,10 +140,10 @@ export default function ContactPage() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              className="group w-full bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:from-pink-600 hover:to-fuchsia-700 text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform flex items-center justify-center gap-2"
             >
               문의하기
-              <Send className="w-5 h-5" />
+              <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
         </div>

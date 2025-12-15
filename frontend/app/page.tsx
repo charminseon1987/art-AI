@@ -1,113 +1,362 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Sparkles, Heart, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="text-center py-20 px-4 bg-gradient-to-b from-blue-50 to-white">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
-          대전 유아 · 초등 연계 개인 미술 수업
-        </h1>
-        <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed max-w-2xl mx-auto">
-          5살부터 시작해
-          <br />
-          초등, 중·고등까지 함께 성장해온
-          <br />
-          미술 선생님의 개인 수업입니다.
-        </p>
+  const [isVisible, setIsVisible] = useState({
+    hero: false,
+    trust: false,
+    difference: false,
+    cta: false,
+  });
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-          <Link
-            href="/counseling"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+  useEffect(() => {
+    // Hero 섹션은 즉시 표시
+    setTimeout(() => setIsVisible((prev) => ({ ...prev, hero: true })), 100);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const section = entry.target.getAttribute("data-section");
+            if (section) {
+              setIsVisible((prev) => ({ ...prev, [section]: true }));
+            }
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    // 각 섹션 관찰
+    document.querySelectorAll("[data-section]").forEach((section) => {
+      observer.observe(section);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="min-h-screen overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative text-center py-20 px-4 bg-gradient-to-b from-pink-50 via-rose-50 to-white overflow-hidden">
+        {/* 배경 장식 요소 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-fuchsia-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div
+          className={`relative z-10 transition-all duration-1000 ${
+            isVisible.hero
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+          }`}
+        >
+          <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-700 px-4 py-2 rounded-full mb-6 animate-bounce-slow">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-sm font-semibold">5살부터 시작하는 평생 미술 여정</span>
+          </div>
+
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-800 mb-6 leading-tight">
+            유아 · 초등 연계
+            <br />
+            <span className="bg-gradient-to-r from-pink-500 to-fuchsia-600 bg-clip-text text-transparent">
+              개인 미술 수업
+            </span>
+          </h1>
+
+          <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed max-w-2xl mx-auto">
+            <span className="font-semibold text-pink-600">5살</span>부터 시작해
+            <br />
+            초등, 중·고등까지 함께 성장해온
+            <br />
+            <span className="font-semibold">미술 선생님의 개인 수업</span>입니다.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            <Link
+              href="/counseling"
+              className="group bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:from-pink-600 hover:to-fuchsia-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+            >
+              그림 상담 받아보기
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              href="/consultation"
+              className="group bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+            >
+              미술 수업 상담 신청
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
+        {/* 웨이브 디바이더 */}
+        <div className="absolute bottom-0 left-0 w-full">
+          <svg
+            viewBox="0 0 1440 120"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-auto"
           >
-            그림 상담 받아보기
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/consultation"
-            className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            미술 수업 상담 신청
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+            <path
+              d="M0 0L60 10C120 20 240 40 360 46.7C480 53 600 47 720 43.3C840 40 960 40 1080 46.7C1200 53 1320 67 1380 73.3L1440 80V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V0Z"
+              fill="white"
+            />
+          </svg>
         </div>
       </section>
 
       {/* 신뢰 섹션 */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-2xl font-bold text-gray-800 mb-8">신뢰</h3>
-          <div className="space-y-4 text-lg text-gray-700 mb-6">
-            <div className="flex items-center justify-center gap-2">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-              <span>5살부터 고등학생까지 지속 수업</span>
+      <section
+        className="py-16 px-4 bg-white relative"
+        data-section="trust"
+      >
+        <div className="max-w-6xl mx-auto">
+          <div
+            className={`text-center mb-12 transition-all duration-1000 ${
+              isVisible.trust
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+            }`}
+          >
+            <div className="inline-flex items-center gap-2 mb-4">
+              <Heart className="w-6 h-6 text-red-500" />
+              <h3 className="text-3xl font-bold text-gray-800">신뢰</h3>
+              <Heart className="w-6 h-6 text-red-500" />
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-              <span>중학생 진로·심리 상담 35건 이상</span>
+            <p className="text-gray-600 text-lg">
+              오랜 시간 함께한 경험이 가장 큰 자산입니다
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-10">
+            {/* 카드 1 */}
+            <div
+              className={`group bg-gradient-to-br from-pink-50 to-rose-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-pink-100 ${
+                isVisible.trust
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
+              style={{ transitionDelay: "100ms" }}
+            >
+              <div className="bg-pink-500 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-pink-600 mb-2">10+</div>
+              <div className="text-lg font-semibold text-gray-800 mb-2">
+                지속 수업 연수
+              </div>
+              <p className="text-gray-600">
+                5살부터 고등학생까지
+                <br />
+                함께 성장하는 여정
+              </p>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-              <span>하워드 가드너 지문 상담 100건 이상</span>
+
+            {/* 카드 2 */}
+            <div
+              className={`group bg-gradient-to-br from-fuchsia-50 to-purple-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-fuchsia-100 ${
+                isVisible.trust
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
+              style={{ transitionDelay: "200ms" }}
+            >
+              <div className="bg-fuchsia-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-fuchsia-600 mb-2">35+</div>
+              <div className="text-lg font-semibold text-gray-800 mb-2">
+                진로·심리 상담
+              </div>
+              <p className="text-gray-600">
+                중학생 대상
+                <br />
+                깊이 있는 상담 경험
+              </p>
+            </div>
+
+            {/* 카드 3 */}
+            <div
+              className={`group bg-gradient-to-br from-rose-50 to-orange-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-rose-100 ${
+                isVisible.trust
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
+              style={{ transitionDelay: "300ms" }}
+            >
+              <div className="bg-rose-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <div className="text-4xl font-bold text-rose-600 mb-2">100+</div>
+              <div className="text-lg font-semibold text-gray-800 mb-2">
+                지문 상담 건수
+              </div>
+              <p className="text-gray-600">
+                하워드 가드너 지문분석
+                <br />
+                전문 상담 경험
+              </p>
             </div>
           </div>
-          <p className="font-bold text-gray-700 text-lg">
-            📌 아이를 오래 만나온 경험이 가장 큰 기준입니다.
-          </p>
-        </div>
-      </section>
 
-      {/* 차별점 섹션 */}
-      <section className="py-16 px-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-            이 수업이 다른 이유
-          </h3>
-
-          <div className="bg-white p-8 rounded-lg border-l-4 border-blue-500 shadow-md">
-            <h4 className="text-2xl font-bold text-gray-800 mb-6">
-              아이에게 "왜 이렇게 그렸어?"라고 묻지 않습니다
-            </h4>
-            <ul className="space-y-4 text-lg text-gray-700 mb-6">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>그림을 평가하지 않습니다</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>아이가 말할 준비가 될 때까지 기다립니다</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-600">•</span>
-                <span>그림 → 대화 → 수업으로 자연스럽게 이어갑니다</span>
-              </li>
-            </ul>
-            <p className="text-gray-600 italic text-lg">
-              아이의 그림은 결과가 아니라 이야기의 시작입니다.
+          <div
+            className={`text-center bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white p-6 rounded-2xl shadow-xl transition-all duration-1000 ${
+              isVisible.trust
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-95"
+            }`}
+            style={{ transitionDelay: "400ms" }}
+          >
+            <p className="text-xl font-bold">
+              📌 아이를 오래 만나온 경험이 가장 큰 기준입니다.
             </p>
           </div>
         </div>
       </section>
 
+      {/* 차별점 섹션 */}
+      <section
+        className="py-16 px-4 bg-gradient-to-br from-pink-50 via-rose-50 to-fuchsia-50 relative"
+        data-section="difference"
+      >
+        <div className="max-w-4xl mx-auto">
+          <h3
+            className={`text-4xl font-bold text-gray-800 mb-12 text-center transition-all duration-1000 ${
+              isVisible.difference
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+            }`}
+          >
+            이 수업이 <span className="text-pink-600">다른 이유</span>
+          </h3>
+
+          <div
+            className={`group bg-white p-10 rounded-3xl border-l-8 border-pink-500 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] ${
+              isVisible.difference
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+            }`}
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="bg-pink-100 p-3 rounded-full">
+                <Heart className="w-8 h-8 text-pink-600" />
+              </div>
+              <h4 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight flex-1">
+                아이에게 <span className="text-pink-600">"왜 이렇게 그렸어?"</span>
+                <br className="hidden md:block" />
+                라고 묻지 않습니다
+              </h4>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200 hover:shadow-lg transition-all duration-300">
+                <div className="text-3xl mb-3">🎨</div>
+                <h5 className="font-bold text-gray-800 mb-2 text-lg">평가하지 않습니다</h5>
+                <p className="text-gray-600 text-sm">
+                  그림은 정답이 없는 자유로운 표현입니다
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 p-6 rounded-xl border border-fuchsia-200 hover:shadow-lg transition-all duration-300">
+                <div className="text-3xl mb-3">⏰</div>
+                <h5 className="font-bold text-gray-800 mb-2 text-lg">기다립니다</h5>
+                <p className="text-gray-600 text-sm">
+                  아이가 말할 준비가 될 때까지 기다립니다
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-rose-50 to-orange-100 p-6 rounded-xl border border-rose-200 hover:shadow-lg transition-all duration-300">
+                <div className="text-3xl mb-3">💬</div>
+                <h5 className="font-bold text-gray-800 mb-2 text-lg">자연스럽게</h5>
+                <p className="text-gray-600 text-sm">
+                  그림 → 대화 → 수업으로 이어집니다
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-pink-500 to-fuchsia-600 p-6 rounded-xl">
+              <p className="text-white text-xl font-semibold text-center italic">
+                "아이의 그림은 결과가 아니라 이야기의 시작입니다"
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA 섹션 */}
-      <section className="py-20 px-4 bg-gradient-to-r from-purple-600 to-purple-800 text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-2xl md:text-3xl font-bold mb-4">
+      <section
+        className="py-20 px-4 bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white relative overflow-hidden"
+        data-section="cta"
+      >
+        {/* 배경 장식 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-10 right-10 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl opacity-10 animate-pulse"></div>
+          <div className="absolute bottom-10 left-10 w-64 h-64 bg-rose-300 rounded-full mix-blend-overlay filter blur-3xl opacity-10 animate-pulse animation-delay-2000"></div>
+        </div>
+
+        <div
+          className={`max-w-4xl mx-auto text-center relative z-10 transition-all duration-1000 ${
+            isVisible.cta
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+          }`}
+        >
+          <Sparkles className="w-12 h-12 mx-auto mb-6 animate-pulse" />
+          <h3 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
             우리 아이에게 맞는 방식인지
           </h3>
-          <h3 className="text-2xl md:text-3xl font-bold mb-8">
+          <h3 className="text-3xl md:text-4xl font-bold mb-10 leading-tight">
             그림 상담으로 먼저 확인해보세요.
           </h3>
           <Link
             href="/counseling"
-            className="inline-block bg-white text-purple-600 hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold transition-colors"
+            className="inline-flex items-center gap-3 bg-white text-pink-600 hover:bg-gray-100 px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-3xl hover:scale-105 transform"
           >
+            <Sparkles className="w-6 h-6" />
             그림 상담 탭으로 이동
+            <ArrowRight className="w-6 h-6" />
           </Link>
         </div>
       </section>
+
+      <style jsx>{`
+        @keyframes blob {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+
+        .animate-bounce-slow {
+          animation: bounce 3s infinite;
+        }
+      `}</style>
     </div>
   );
 }
