@@ -11,6 +11,8 @@ import {
   Sparkles,
   Heart,
   MessageCircle,
+  MailOpen,
+  PhoneCall,
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import ChatInterface from "@/components/ChatInterface";
@@ -613,25 +615,41 @@ export default function CounselingPage() {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4 mt-8">
-                <a
-                  href="https://pf.kakao.com/_your_kakao_id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-8 py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                  <MessageCircle className="w-6 h-6" />
-                  카카오톡으로 문의하기
-                </a>
-                <a
-                  href="https://booking.naver.com/your_booking_id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                >
-                  <MessageCircle className="w-6 h-6" />
-                  네이버 예약하기
-                </a>
+              {/* 문의하기 - 상단 배치 */}
+              <div className="grid md:grid-cols-2 gap-6 mb-12">
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-8 rounded-2xl shadow-lg border border-amber-100 text-center hover:shadow-xl transition-all duration-300">
+                  <MailOpen className="w-16 h-16 text-amber-500 mx-auto mb-4 animate-pulse" />
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                    이메일 문의
+                  </h3>
+                  <p className="text-gray-600 mb-4 text-sm">
+                    문의 사항은 이메일로 보내주세요.
+                  </p>
+                  <a
+                    href="mailto:lovetree914@naver.com?subject=미술 수업 문의&body=안녕하세요. 문의드립니다."
+                    className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-gray-800 px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
+                  >
+                    <MailOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span>이메일 보내기</span>
+                  </a>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl shadow-lg border border-green-100 text-center hover:shadow-xl transition-all duration-300">
+                  <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                    전화 상담
+                  </h3>
+                  <p className="text-gray-600 mb-4 text-sm">
+                    전화 상담은 오전 10시부터 오후 5시까지 가능합니다.
+                  </p>
+                  <a
+                    href="tel:010-4159-1102"
+                    className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
+                  >
+                    <PhoneCall className="w-5 h-5 group-hover:rotate-12 group-hover:scale-110 transition-transform" />
+                    <span>전화 걸기</span>
+                  </a>
+                </div>
               </div>
 
               <div className="mt-6">

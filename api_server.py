@@ -1,5 +1,5 @@
 """FastAPI 서버 - Next.js 프론트엔드와 연동"""
-from fastapi import FastAPI, File, UploadFile, Form, Header, Depends
+from fastapi import FastAPI, File, UploadFile, Form, Header, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List, Dict
@@ -23,6 +23,7 @@ from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
 from utils.setup import setup_directories
 from utils.auth import verify_admin_token
+from utils.supabase_auth import verify_supabase_token, require_admin_or_supervisor
 
 # 디렉토리 설정
 setup_directories()
@@ -933,9 +934,39 @@ async def create_contact(
 async def get_contacts(
     authorization: Optional[str] = Header(None)
 ):
-    """문의 목록 조회 API (관리자 전용)"""
-    # 관리자 인증 확인
-    # verify_admin_token(authorization)  # 테스트용 비활성화
+    """문의 목록 조회 API (관리자/슈퍼바이저 전용)"""
+    # Supabase 인증 확인 (설정된 경우)
+    try:
+        user_info = verify_supabase_token(authorization)
+        if user_info.get("role") not in ["admin", "supervisor"]:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 또는 슈퍼바이저 권한이 필요합니다."}
+            )
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
     try:
         contacts = contact_service.list_contacts()
         
@@ -969,9 +1000,39 @@ async def update_contact_status(
     status: str = Form(...),
     authorization: Optional[str] = Header(None)
 ):
-    """문의 상태 업데이트 API (관리자 전용)"""
-    # 관리자 인증 확인
-    # verify_admin_token(authorization)  # 테스트용 비활성화
+    """문의 상태 업데이트 API (관리자/슈퍼바이저 전용)"""
+    # Supabase 인증 확인 (설정된 경우)
+    try:
+        user_info = verify_supabase_token(authorization)
+        if user_info.get("role") not in ["admin", "supervisor"]:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 또는 슈퍼바이저 권한이 필요합니다."}
+            )
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
     try:
         contact = contact_service.update_contact_status(contact_id, status)
         

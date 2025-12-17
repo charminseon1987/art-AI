@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Upload, Loader2, Sparkles, Image as ImageIcon, FileText } from "lucide-react";
 import { analyzeImage } from "@/lib/api";
 
 interface ImageUploadProps {
@@ -13,6 +13,8 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [userEmotion, setUserEmotion] = useState<string>("");
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState("");
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -26,6 +28,34 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     }
   };
 
+  // 프로그레스바 애니메이션
+  useEffect(() => {
+    if (uploading) {
+      setProgress(0);
+      setCurrentStep("이미지 업로드 중...");
+
+      const steps = [
+        { time: 500, progress: 20, step: "이미지 업로드 중..." },
+        { time: 1500, progress: 40, step: "이미지 분석 중..." },
+        { time: 3000, progress: 60, step: "색상과 형태 분석 중..." },
+        { time: 4500, progress: 80, step: "감정 언어 분석 중..." },
+        { time: 6000, progress: 95, step: "리포트 생성 중..." },
+      ];
+
+      steps.forEach(({ time, progress: prog, step }) => {
+        setTimeout(() => {
+          if (uploading) {
+            setProgress(prog);
+            setCurrentStep(step);
+          }
+        }, time);
+      });
+    } else {
+      setProgress(0);
+      setCurrentStep("");
+    }
+  }, [uploading]);
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -34,7 +64,11 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       const emotion =
         userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
       const data = await analyzeImage(selectedFile, emotion);
-      onUploadComplete(data);
+      setProgress(100);
+      setCurrentStep("완료!");
+      setTimeout(() => {
+        onUploadComplete(data);
+      }, 300);
     } catch (error: any) {
       console.error("Upload error:", error);
       const errorMessage =
@@ -108,7 +142,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       <button
         onClick={handleUpload}
         disabled={!selectedFile || uploading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-8 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-rose-400 to-pink-400 hover:from-rose-500 hover:to-pink-500 disabled:from-gray-300 disabled:to-gray-400 text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:shadow-none"
       >
         {uploading ? (
           <>
@@ -117,11 +151,108 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
           </>
         ) : (
           <>
+            <Sparkles className="w-5 h-5" />
             분석 시작
-            <Upload className="w-5 h-5" />
           </>
         )}
       </button>
+
+      {/* 프로그레스바 모달 팝업 */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform animate-scaleIn">
+            {/* 헤더 */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full mb-4">
+                {progress < 30 ? (
+                  <ImageIcon className="w-8 h-8 text-rose-500 animate-pulse" />
+                ) : progress < 70 ? (
+                  <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
+                ) : (
+                  <FileText className="w-8 h-8 text-pink-500 animate-pulse" />
+                )}
+              </div>
+              <h3 className="text-2xl font-bold text-stone-800 mb-2">
+                AI 분석 중
+              </h3>
+              <p className="text-sm text-stone-600">
+                아이의 그림을 꼼꼼히 분석하고 있습니다
+              </p>
+            </div>
+
+            {/* 프로그레스바 */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-stone-700">
+                  {currentStep}
+                </span>
+                <span className="text-lg font-bold text-rose-600">
+                  {progress}%
+                </span>
+              </div>
+
+              {/* 프로그레스바 배경 */}
+              <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
+                {/* 프로그레스바 채우기 */}
+                <div
+                  className="h-4 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400 shadow-lg relative overflow-hidden"
+                  style={{ width: `${progress}%` }}
+                >
+                  {/* 반짝이는 애니메이션 효과 */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* 분석 단계 표시 */}
+            <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 rounded-xl border border-rose-200">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-rose-500 flex-shrink-0" />
+                <div className="text-sm text-stone-700">
+                  <p className="font-medium">잠시만 기다려주세요</p>
+                  <p className="text-xs text-stone-600 mt-1">
+                    AI가 그림의 색상, 형태, 감정을 분석하고 있습니다
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 진행 단계 체크리스트 */}
+            <div className="mt-4 space-y-2">
+              <div className={`flex items-center gap-2 text-xs ${progress >= 20 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 20 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  {progress >= 20 && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span>이미지 업로드</span>
+              </div>
+              <div className={`flex items-center gap-2 text-xs ${progress >= 40 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 40 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  {progress >= 40 && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span>이미지 분석</span>
+              </div>
+              <div className={`flex items-center gap-2 text-xs ${progress >= 60 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 60 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  {progress >= 60 && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span>색상과 형태 분석</span>
+              </div>
+              <div className={`flex items-center gap-2 text-xs ${progress >= 80 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 80 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  {progress >= 80 && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span>감정 언어 분석</span>
+              </div>
+              <div className={`flex items-center gap-2 text-xs ${progress >= 95 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 95 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  {progress >= 95 && <span className="text-white text-xs">✓</span>}
+                </div>
+                <span>리포트 생성</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

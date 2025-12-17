@@ -52,7 +52,7 @@ export default function Navigation() {
             onClick={closeMobileMenu}
           >
             <Palette className="w-6 h-6 text-pink-600" />
-            <span className="hidden sm:inline">미술 수업 & 그림 상담</span>
+            <span className="hidden sm:inline">Analyist AI Agent</span>
             <span className="sm:hidden">미술교실</span>
           </Link>
 
@@ -98,9 +98,7 @@ export default function Navigation() {
       {/* 모바일 메뉴 드롭다운 */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          isMobileMenuOpen
-            ? "max-h-screen opacity-100"
-            : "max-h-0 opacity-0"
+          isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div className="px-4 pt-2 pb-4 space-y-2 bg-gradient-to-b from-white to-pink-50">

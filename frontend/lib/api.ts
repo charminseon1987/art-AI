@@ -92,9 +92,18 @@ export async function generateChatReport(
   }
 }
 
+async function getAuthToken(): Promise<string | null> {
+  // Supabase 세션에서 토큰 가져오기
+  const { supabase } = await import("./supabase");
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
 export async function getReports() {
   try {
-    const token = sessionStorage.getItem("admin_token");
+    const token = await getAuthToken();
     const response = await axios.get(`/api/reports`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -109,7 +118,7 @@ export async function getReports() {
 
 export async function getReport(reportId: string) {
   try {
-    const token = sessionStorage.getItem("admin_token");
+    const token = await getAuthToken();
     const response = await axios.get(`/api/reports/${reportId}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -172,7 +181,7 @@ export async function downloadAdminReportPDF(reportId: string): Promise<void> {
   const pythonBackendUrl =
     process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
   const url = `${pythonBackendUrl}/api/reports/${reportId}/admin-pdf`;
-  const token = sessionStorage.getItem("admin_token");
+  const token = await getAuthToken();
 
   try {
     const response = await fetch(url, {
@@ -204,7 +213,7 @@ export async function saveCounselorAnswers(
   const pythonBackendUrl =
     process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
   const url = `${pythonBackendUrl}/api/reports/${reportId}/counselor-answers`;
-  const token = sessionStorage.getItem("admin_token");
+  const token = await getAuthToken();
 
   try {
     const response = await axios.post(
@@ -274,7 +283,7 @@ export async function getContacts(): Promise<{
   contacts: ContactInquiry[];
 }> {
   try {
-    const token = sessionStorage.getItem("admin_token");
+    const token = await getAuthToken();
     const response = await axios.get(`/api/contacts`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
@@ -294,7 +303,7 @@ export async function updateContactStatus(
   const pythonBackendUrl =
     process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
   const url = `${pythonBackendUrl}/api/contacts/${contactId}/status`;
-  const token = sessionStorage.getItem("admin_token");
+  const token = await getAuthToken();
 
   try {
     const formData = new FormData();

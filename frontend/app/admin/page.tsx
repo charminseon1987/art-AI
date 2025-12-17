@@ -20,6 +20,8 @@ import {
   updateContactStatus,
   ContactInquiry,
 } from "@/lib/api";
+import { getCurrentUser, isAdminOrSupervisor } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
 interface Report {
@@ -74,18 +76,45 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // 관리자 인증 확인
-    const checkAuth = () => {
-      const isAuthenticated =
-        sessionStorage.getItem("admin_authenticated") === "true";
-      if (!isAuthenticated) {
-        router.push("/admin/login");
-      } else {
+    // Supabase 인증 확인
+    const checkAuth = async () => {
+      try {
+        // 환경 변수 확인
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+        if (!supabaseUrl || supabaseUrl === "https://placeholder.supabase.co") {
+          console.warn(
+            "Supabase가 설정되지 않았습니다. 개발 모드에서는 기존 인증 방식을 사용합니다."
+          );
+          // 기존 sessionStorage 방식으로 폴백
+          const isAuthenticated =
+            sessionStorage.getItem("admin_authenticated") === "true";
+          if (!isAuthenticated) {
+            router.push("/admin/login");
+            return;
+          }
+          setAuthenticated(true);
+          loadReports();
+          loadContacts();
+          setCheckingAuth(false);
+          return;
+        }
+
+        const user = await getCurrentUser();
+
+        if (!user || !isAdminOrSupervisor(user.role)) {
+          router.push("/admin/login");
+          return;
+        }
+
         setAuthenticated(true);
         loadReports();
         loadContacts();
+      } catch (error) {
+        console.error("인증 확인 오류:", error);
+        router.push("/admin/login");
+      } finally {
+        setCheckingAuth(false);
       }
-      setCheckingAuth(false);
     };
 
     checkAuth();
@@ -223,10 +252,16 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("admin_authenticated");
-    sessionStorage.removeItem("admin_token");
-    router.push("/admin/login");
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      sessionStorage.removeItem("user_role");
+      sessionStorage.removeItem("user_email");
+      router.push("/admin/login");
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      router.push("/admin/login");
+    }
   };
 
   if (checkingAuth) {
