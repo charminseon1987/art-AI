@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, Loader2, Sparkles, Image as ImageIcon, FileText } from "lucide-react";
+import { Upload, Loader2, Sparkles, Image as ImageIcon, FileText, AlertCircle } from "lucide-react";
 import { analyzeImage } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth";
 
 interface ImageUploadProps {
   onUploadComplete: (data: any) => void;
@@ -15,6 +16,11 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   const [userEmotion, setUserEmotion] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
+  const [usageLimit, setUsageLimit] = useState<{
+    image_analysis_remaining: number;
+    image_analysis_limit: number;
+  } | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -27,6 +33,33 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       reader.readAsDataURL(file);
     }
   };
+
+  // 사용 횟수 조회
+  useEffect(() => {
+    const fetchUsageLimit = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          const response = await fetch("/api/usage-limits");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setUsageLimit({
+                image_analysis_remaining: data.usage.image_analysis_remaining,
+                image_analysis_limit: data.usage.image_analysis_limit,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("사용 횟수 조회 오류:", error);
+      } finally {
+        setLoadingUsage(false);
+      }
+    };
+
+    fetchUsageLimit();
+  }, []);
 
   // 프로그레스바 애니메이션
   useEffect(() => {
@@ -59,13 +92,50 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    // 사용 횟수 확인
+    if (usageLimit && usageLimit.image_analysis_remaining <= 0) {
+      alert("분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.");
+      return;
+    }
+
     setUploading(true);
     try {
       const emotion =
         userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
       const data = await analyzeImage(selectedFile, emotion);
+      
+      // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
+      if (data.success === false && data.error) {
+        alert(data.error);
+        // 사용 횟수 다시 조회
+        const response = await fetch("/api/usage-limits");
+        if (response.ok) {
+          const usageData = await response.json();
+          if (usageData.success) {
+            setUsageLimit({
+              image_analysis_remaining: usageData.usage.image_analysis_remaining,
+              image_analysis_limit: usageData.usage.image_analysis_limit,
+            });
+          }
+        }
+        return;
+      }
+      
       setProgress(100);
       setCurrentStep("완료!");
+      
+      // 사용 횟수 다시 조회
+      const response = await fetch("/api/usage-limits");
+      if (response.ok) {
+        const usageData = await response.json();
+        if (usageData.success) {
+          setUsageLimit({
+            image_analysis_remaining: usageData.usage.image_analysis_remaining,
+            image_analysis_limit: usageData.usage.image_analysis_limit,
+          });
+        }
+      }
+      
       setTimeout(() => {
         onUploadComplete(data);
       }, 300);
@@ -139,9 +209,34 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         </select>
       </div>
 
+      {/* 사용 횟수 표시 */}
+      {usageLimit !== null && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-sm text-blue-800">
+            <span className="font-semibold">남은 분석 횟수:</span>
+            <span className="font-bold text-blue-600">
+              {usageLimit.image_analysis_remaining} / {usageLimit.image_analysis_limit}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 사용 횟수 초과 안내 */}
+      {usageLimit !== null && usageLimit.image_analysis_remaining <= 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800">
+              <p className="font-semibold mb-1">분석회수를 초과했습니다.</p>
+              <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={handleUpload}
-        disabled={!selectedFile || uploading}
+        disabled={!selectedFile || uploading || (usageLimit !== null && usageLimit.image_analysis_remaining <= 0)}
         className="w-full bg-gradient-to-r from-rose-400 to-pink-400 hover:from-rose-500 hover:to-pink-500 disabled:from-gray-300 disabled:to-gray-400 text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:shadow-none"
       >
         {uploading ? (

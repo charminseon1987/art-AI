@@ -16,8 +16,39 @@ export default function AdminLoginPage() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    // 이미 로그인되어 있는지 확인
-    checkSession();
+    // URL 파라미터에서 세션 정보 확인 (카카오 로그인 콜백)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionParam = urlParams.get("session");
+    const userParam = urlParams.get("user");
+    const errorParam = urlParams.get("error");
+
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
+
+    if (sessionParam && userParam) {
+      try {
+        const session = JSON.parse(sessionParam);
+        const user = JSON.parse(userParam);
+
+        // 세션 저장
+        supabase.auth.setSession(session).then(() => {
+          if (user.role === "admin" || user.role === "supervisor") {
+            sessionStorage.setItem("user_role", user.role);
+            sessionStorage.setItem("user_email", user.email);
+            router.push("/admin");
+          } else {
+            setError("관리자 또는 슈퍼바이저 권한이 필요합니다.");
+            supabase.auth.signOut();
+          }
+        });
+      } catch (e) {
+        console.error("세션 파싱 오류:", e);
+      }
+    } else {
+      // 이미 로그인되어 있는지 확인
+      checkSession();
+    }
   }, []);
 
   const checkSession = async () => {
@@ -176,6 +207,49 @@ export default function AdminLoginPage() {
               {loading ? "처리 중..." : isSignUp ? "회원가입" : "로그인"}
             </button>
           </form>
+
+          {/* 카카오 로그인 버튼 */}
+          {!isSignUp && (
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">또는</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.auth.signInWithOAuth({
+                      provider: "kakao",
+                      options: {
+                        redirectTo: `${window.location.origin}/api/auth/kakao`,
+                      },
+                    });
+                    if (error) {
+                      setError(error.message || "카카오 로그인에 실패했습니다.");
+                    }
+                  } catch (err: any) {
+                    setError(err.message || "카카오 로그인 중 오류가 발생했습니다.");
+                  }
+                }}
+                className="w-full mt-4 bg-[#FEE500] text-[#000000] py-3 px-4 rounded-lg font-semibold hover:bg-[#FDD835] transition-all flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z" />
+                </svg>
+                카카오로 로그인
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 text-center">
             <button

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +9,13 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
+    }
+
+    // 인증 토큰 가져오기
+    const token = await getSessionToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     // Python 백엔드 API 호출
@@ -22,6 +30,7 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(`${pythonBackendUrl}/api/analyze-image`, {
       method: "POST",
+      headers,
       body: backendFormData,
     });
 

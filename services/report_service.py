@@ -104,7 +104,7 @@ class ReportService:
         reports.sort(key=lambda x: x.created_at, reverse=True)
         return reports
     
-    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트", image_base64: str = None) -> bytes:
+    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트", image_base64: str = None, user_info: Optional[Dict[str, Any]] = None, report_user_id: Optional[str] = None) -> bytes:
         """마크다운 내용을 PDF로 변환"""
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle

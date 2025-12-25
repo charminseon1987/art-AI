@@ -15,9 +15,11 @@ import {
   MessageCircle,
   Upload,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { getCurrentUser } from "@/lib/auth";
 
 interface FingerprintData {
   thumb_personality?: {
@@ -56,6 +58,11 @@ export default function FingerprintPage() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [usageLimit, setUsageLimit] = useState<{
+    fingerprint_analysis_remaining: number;
+    fingerprint_analysis_limit: number;
+  } | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
 
   useEffect(() => {
     // 스크래핑 서비스를 통해 데이터 가져오기
@@ -72,6 +79,31 @@ export default function FingerprintPage() {
       .finally(() => {
         setLoading(false);
       });
+
+    // 사용 횟수 조회
+    const fetchUsageLimit = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          const response = await fetch("/api/usage-limits");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setUsageLimit({
+                fingerprint_analysis_remaining: data.usage.fingerprint_analysis_remaining,
+                fingerprint_analysis_limit: data.usage.fingerprint_analysis_limit,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("사용 횟수 조회 오류:", error);
+      } finally {
+        setLoadingUsage(false);
+      }
+    };
+
+    fetchUsageLimit();
   }, []);
 
   // 채팅 초기 메시지
@@ -143,6 +175,12 @@ export default function FingerprintPage() {
       return;
     }
 
+    // 사용 횟수 확인
+    if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {
+      alert("분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.");
+      return;
+    }
+
     // 파일 크기 확인 (10MB 제한)
     if (selectedFile.size > 10 * 1024 * 1024) {
       alert("파일 크기는 10MB 이하여야 합니다.");
@@ -185,8 +223,38 @@ export default function FingerprintPage() {
       const data = await response.json();
       console.log("분석 결과:", data);
 
+      // 사용 횟수 초과 응답 처리
+      if (data.success === false && data.error) {
+        alert(data.error);
+        // 사용 횟수 다시 조회
+        const usageResponse = await fetch("/api/usage-limits");
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          if (usageData.success) {
+            setUsageLimit({
+              fingerprint_analysis_remaining: usageData.usage.fingerprint_analysis_remaining,
+              fingerprint_analysis_limit: usageData.usage.fingerprint_analysis_limit,
+            });
+          }
+        }
+        setIsAnalyzing(false);
+        return;
+      }
+
       if (data.success && data.analysis) {
         setAnalysisResult(data.analysis);
+        
+        // 사용 횟수 다시 조회
+        const usageResponse = await fetch("/api/usage-limits");
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          if (usageData.success) {
+            setUsageLimit({
+              fingerprint_analysis_remaining: usageData.usage.fingerprint_analysis_remaining,
+              fingerprint_analysis_limit: usageData.usage.fingerprint_analysis_limit,
+            });
+          }
+        }
       } else {
         throw new Error(data.error || "분석 결과를 받지 못했습니다");
       }
@@ -590,11 +658,36 @@ export default function FingerprintPage() {
             )}
           </div>
 
+          {/* 사용 횟수 표시 */}
+          {usageLimit !== null && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <span className="font-semibold">남은 분석 횟수:</span>
+                <span className="font-bold text-blue-600">
+                  {usageLimit.fingerprint_analysis_remaining} / {usageLimit.fingerprint_analysis_limit}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 사용 횟수 초과 안내 */}
+          {usageLimit !== null && usageLimit.fingerprint_analysis_remaining <= 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-red-800">
+                  <p className="font-semibold mb-1">분석회수를 초과했습니다.</p>
+                  <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {selectedFile && (
             <div className="text-center">
               <button
                 onClick={handleAnalyzeFingerprint}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || (usageLimit !== null && usageLimit.fingerprint_analysis_remaining <= 0)}
                 className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 mx-auto hover:scale-105"
               >
                 {isAnalyzing ? (

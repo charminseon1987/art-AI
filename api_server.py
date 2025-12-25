@@ -18,6 +18,7 @@ from services.simple_report_service import SimpleReportService
 from services.class_work_service import ClassWorkService
 from services.fingerprint_service import FingerprintService
 from services.contact_service import ContactService
+from services.usage_limit_service import UsageLimitService
 from models.class_work import ClassWork
 from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
@@ -63,6 +64,7 @@ simple_report_service = SimpleReportService(llm)
 class_work_service = ClassWorkService()
 fingerprint_service = FingerprintService(llm, image_service)
 contact_service = ContactService()
+usage_limit_service = UsageLimitService()
 
 # ReportGeneratorService 초기화 (에러 발생 시에도 서버가 시작되도록)
 try:
@@ -80,10 +82,88 @@ async def root():
 @app.post("/api/analyze-image")
 async def analyze_image(
     file: UploadFile = File(...),
-    emotion: Optional[str] = Form(None)
+    emotion: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None)
 ):
-    """이미지 분석 API"""
+    """이미지 분석 API (인증 필요)"""
+    # 토큰 검증
     try:
+        user_info = verify_supabase_token(authorization)
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
+    
+    try:
+        # 사용 횟수 확인 (인증된 사용자인 경우만)
+        user_id = None
+        kakao_id = None
+        try:
+            user_info = verify_supabase_token(authorization)
+            user_id = user_info.get("id")
+            
+            # 카카오 사용자 ID 가져오기 (user_usage_limits 테이블에서)
+            if user_id and usage_limit_service.supabase:
+                try:
+                    usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
+                    if usage_response.data and len(usage_response.data) > 0:
+                        kakao_id = usage_response.data[0].get("kakao_id")
+                except:
+                    pass  # 카카오 ID 조회 실패해도 계속 진행
+        except:
+            pass  # 인증 실패 시 user_id는 None으로 유지
+        
+        if user_id:
+            # 카카오 ID로 사용 횟수 확인 (카카오 ID가 있으면 우선 사용)
+            if kakao_id:
+                # 카카오 ID로 레코드 찾기
+                try:
+                    kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
+                    if kakao_response.data and len(kakao_response.data) > 0:
+                        kakao_limit = kakao_response.data[0]
+                        count = kakao_limit.get("image_analysis_count", 0)
+                        if count >= usage_limit_service.MAX_IMAGE_ANALYSIS:
+                            return JSONResponse(
+                                status_code=200,
+                                content={
+                                    "success": False,
+                                    "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+                                }
+                            )
+                except:
+                    pass  # 카카오 ID 조회 실패 시 user_id로 확인
+            
+            # user_id로 사용 횟수 확인
+            is_allowed, error_message = usage_limit_service.check_image_analysis_limit(user_id)
+            if not is_allowed:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "success": False,
+                        "error": error_message
+                    }
+                )
+        
         # 파일 읽기
         contents = await file.read()
         file_obj = BytesIO(contents)
@@ -110,6 +190,10 @@ async def analyze_image(
         
         # 리포트 저장
         report_service.save_report(report_data)
+        
+        # 사용 횟수 증가 (인증된 사용자인 경우만)
+        if user_id:
+            usage_limit_service.increment_image_analysis_count(user_id)
         
         # 응답 데이터 구성
         return {
@@ -462,7 +546,38 @@ async def create_class_work(
 ):
     """수업 작품 생성 (관리자 전용)"""
     # 관리자 인증 확인
-    # verify_admin_token(authorization)  # 테스트용 비활성화
+    try:
+        user_info = verify_supabase_token(authorization)
+        if user_info.get("role") not in ["admin", "supervisor"]:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 또는 슈퍼바이저 권한이 필요합니다."}
+            )
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
+    
     try:
         import uuid
         import traceback
@@ -649,9 +764,89 @@ async def get_fingerprint_data():
 
 
 @app.post("/api/analyze-fingerprint")
-async def analyze_fingerprint(file: UploadFile = File(...)):
-    """엄지 지문 분석 API"""
+async def analyze_fingerprint(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None)
+):
+    """엄지 지문 분석 API (인증 필요)"""
+    # 토큰 검증
     try:
+        user_info = verify_supabase_token(authorization)
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
+    
+    try:
+        # 사용 횟수 확인 (인증된 사용자인 경우만)
+        user_id = None
+        kakao_id = None
+        try:
+            user_info = verify_supabase_token(authorization)
+            user_id = user_info.get("id")
+            
+            # 카카오 사용자 ID 가져오기 (user_usage_limits 테이블에서)
+            if user_id and usage_limit_service.supabase:
+                try:
+                    usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
+                    if usage_response.data and len(usage_response.data) > 0:
+                        kakao_id = usage_response.data[0].get("kakao_id")
+                except:
+                    pass  # 카카오 ID 조회 실패해도 계속 진행
+        except:
+            pass  # 인증 실패 시 user_id는 None으로 유지
+        
+        if user_id:
+            # 카카오 ID로 사용 횟수 확인 (카카오 ID가 있으면 우선 사용)
+            if kakao_id:
+                # 카카오 ID로 레코드 찾기
+                try:
+                    kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
+                    if kakao_response.data and len(kakao_response.data) > 0:
+                        kakao_limit = kakao_response.data[0]
+                        count = kakao_limit.get("fingerprint_analysis_count", 0)
+                        if count >= usage_limit_service.MAX_FINGERPRINT_ANALYSIS:
+                            return JSONResponse(
+                                status_code=200,
+                                content={
+                                    "success": False,
+                                    "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+                                }
+                            )
+                except:
+                    pass  # 카카오 ID 조회 실패 시 user_id로 확인
+            
+            # user_id로 사용 횟수 확인
+            is_allowed, error_message = usage_limit_service.check_fingerprint_analysis_limit(user_id)
+            if not is_allowed:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "success": False,
+                        "error": error_message
+                    }
+                )
+        
         # 파일 읽기
         contents = await file.read()
         
@@ -687,6 +882,10 @@ async def analyze_fingerprint(file: UploadFile = File(...)):
             )
         
         print(f"지문 분석 성공: 패턴={analysis.get('pattern_type', '알 수 없음')}")
+        
+        # 사용 횟수 증가 (인증된 사용자인 경우만)
+        if user_id:
+            usage_limit_service.increment_fingerprint_analysis_count(user_id)
         
         return {
             "success": True,
@@ -738,8 +937,42 @@ async def get_class_image(filename: str):
 
 
 @app.get("/api/reports/{report_id}/pdf")
-async def generate_pdf_report(report_id: str):
-    """미술 심리 전문가 리포트 PDF 생성"""
+async def generate_pdf_report(
+    report_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """미술 심리 전문가 리포트 PDF 생성 (인증 필요)"""
+    # 토큰 검증
+    user_info = None
+    try:
+        user_info = verify_supabase_token(authorization)
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+                # 기존 방식에서는 user_info를 None으로 유지
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+            # 기존 방식에서는 user_info를 None으로 유지
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
+    
     try:
         from fastapi.responses import Response
         
@@ -750,6 +983,18 @@ async def generate_pdf_report(report_id: str):
                 status_code=404,
                 content={"error": "리포트를 찾을 수 없습니다."}
             )
+        
+        # 사용자 권한 확인 (리포트 소유자 또는 관리자/슈퍼바이저만 접근 가능)
+        if user_info:
+            user_id = user_info.get("id")
+            user_role = user_info.get("role", "user")
+            report_user_id = report_data.user_id
+            
+            if user_role not in ["admin", "supervisor"] and user_id != report_user_id:
+                return JSONResponse(
+                    status_code=403,
+                    content={"error": "이 리포트에 접근할 권한이 없습니다."}
+                )
         
         # 간단 리포트 생성 (미술 심리 전문가 리포트)
         chat_responses = report_data.image_metadata.get("chat_responses", [])
@@ -772,7 +1017,9 @@ async def generate_pdf_report(report_id: str):
             pdf_content = report_service.generate_pdf_from_markdown(
                 simple_report,
                 title="그림 관찰 기반 상담 참고 리포트",
-                image_base64=image_base64
+                image_base64=image_base64,
+                user_info=user_info,
+                report_user_id=report_data.user_id
             )
         except Exception as e:
             import traceback
@@ -824,7 +1071,41 @@ async def generate_admin_pdf_report(
 ):
     """관리자용 전문 리포트 PDF 생성 (관리자 전용)"""
     # 관리자 인증 확인
-    # verify_admin_token(authorization)  # 테스트용 비활성화
+    user_info = None
+    try:
+        user_info = verify_supabase_token(authorization)
+        if user_info.get("role") not in ["admin", "supervisor"]:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 또는 슈퍼바이저 권한이 필요합니다."}
+            )
+    except HTTPException as e:
+        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
+        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
+            try:
+                verify_admin_token(authorization)
+                # 기존 방식에서는 user_info를 None으로 유지
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        else:
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"error": e.detail}
+            )
+    except Exception as e:
+        # 기타 오류 시 기존 방식으로 폴백
+        try:
+            verify_admin_token(authorization)
+            # 기존 방식에서는 user_info를 None으로 유지
+        except:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증이 필요합니다."}
+            )
+    
     try:
         from fastapi.responses import StreamingResponse
         from io import BytesIO
@@ -855,7 +1136,9 @@ async def generate_admin_pdf_report(
             pdf_content = report_service.generate_pdf_from_markdown(
                 admin_report_markdown,
                 title="전문 리포트",
-                image_base64=image_base64
+                image_base64=image_base64,
+                user_info=user_info,
+                report_user_id=report_data.user_id
             )
         except Exception as e:
             import traceback
