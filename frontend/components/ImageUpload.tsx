@@ -1,9 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, Loader2, Sparkles, Image as ImageIcon, FileText, AlertCircle } from "lucide-react";
+import {
+  Upload,
+  Loader2,
+  Sparkles,
+  Image as ImageIcon,
+  FileText,
+  AlertCircle,
+} from "lucide-react";
 import { analyzeImage } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 interface ImageUploadProps {
   onUploadComplete: (data: any) => void;
@@ -34,7 +42,85 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     }
   };
 
-  // 사용 횟수 조회
+  // 인증 완료 후 분석 시작 함수
+  const handleUploadAfterAuth = async (file: File, emotion?: string) => {
+    if (!file) return;
+
+    // 사용 횟수 확인 (직접 조회)
+    const response = await fetch("/api/usage-limits");
+    if (response.ok) {
+      const usageData = await response.json();
+      if (usageData.success) {
+        const currentLimit = {
+          image_analysis_remaining: usageData.usage.image_analysis_remaining,
+          image_analysis_limit: usageData.usage.image_analysis_limit,
+        };
+        setUsageLimit(currentLimit);
+
+        if (currentLimit.image_analysis_remaining <= 0) {
+          alert(
+            "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+          );
+          return;
+        }
+      }
+    }
+
+    setUploading(true);
+    try {
+      const emotionValue =
+        emotion && emotion !== "선택 안함" ? emotion : undefined;
+      const data = await analyzeImage(file, emotionValue);
+
+      // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
+      if (data.success === false && data.error) {
+        alert(data.error);
+        // 사용 횟수 다시 조회
+        const response = await fetch("/api/usage-limits");
+        if (response.ok) {
+          const usageData = await response.json();
+          if (usageData.success) {
+            setUsageLimit({
+              image_analysis_remaining:
+                usageData.usage.image_analysis_remaining,
+              image_analysis_limit: usageData.usage.image_analysis_limit,
+            });
+          }
+        }
+        return;
+      }
+
+      setProgress(100);
+      setCurrentStep("완료!");
+
+      // 사용 횟수 다시 조회
+      const response = await fetch("/api/usage-limits");
+      if (response.ok) {
+        const usageData = await response.json();
+        if (usageData.success) {
+          setUsageLimit({
+            image_analysis_remaining: usageData.usage.image_analysis_remaining,
+            image_analysis_limit: usageData.usage.image_analysis_limit,
+          });
+        }
+      }
+
+      setTimeout(() => {
+        onUploadComplete(data);
+      }, 300);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      const errorMessage =
+        error.message ||
+        error.response?.data?.error ||
+        "업로드 중 오류가 발생했습니다.";
+      alert(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // 사용 횟수 조회 및 인증 완료 후 자동 분석 시작
   useEffect(() => {
     const fetchUsageLimit = async () => {
       try {
@@ -48,6 +134,50 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
                 image_analysis_remaining: data.usage.image_analysis_remaining,
                 image_analysis_limit: data.usage.image_analysis_limit,
               });
+            }
+          }
+
+          // 인증 완료 후 자동 분석 시작
+          const pendingAnalysis = sessionStorage.getItem("pendingAnalysis");
+          const pendingAnalysisFile = sessionStorage.getItem(
+            "pendingAnalysisFile"
+          );
+
+          if (pendingAnalysis && pendingAnalysisFile && !selectedFile) {
+            try {
+              const fileData = JSON.parse(pendingAnalysis);
+
+              // Base64 데이터를 File 객체로 변환
+              const base64Data = pendingAnalysisFile;
+              const byteCharacters = atob(
+                base64Data.split(",")[1] || base64Data
+              );
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: fileData.type });
+              const file = new File([blob], fileData.name, {
+                type: fileData.type,
+              });
+
+              setSelectedFile(file);
+              setPreview(fileData.preview);
+              setUserEmotion(fileData.emotion || "");
+
+              // 세션 스토리지 정리
+              sessionStorage.removeItem("pendingAnalysis");
+              sessionStorage.removeItem("pendingAnalysisFile");
+
+              // 자동으로 분석 시작
+              setTimeout(() => {
+                handleUploadAfterAuth(file, fileData.emotion);
+              }, 500);
+            } catch (error) {
+              console.error("자동 분석 시작 오류:", error);
+              sessionStorage.removeItem("pendingAnalysis");
+              sessionStorage.removeItem("pendingAnalysisFile");
             }
           }
         }
@@ -94,7 +224,52 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
     // 사용 횟수 확인
     if (usageLimit && usageLimit.image_analysis_remaining <= 0) {
-      alert("분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.");
+      alert(
+        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+      );
+      return;
+    }
+
+    // 사용자 인증 상태 확인
+    const user = await getCurrentUser();
+    if (!user) {
+      // 인증되지 않은 경우 파일 정보를 세션 스토리지에 저장
+      const fileData = {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        preview: preview,
+        emotion: userEmotion,
+      };
+      sessionStorage.setItem("pendingAnalysis", JSON.stringify(fileData));
+
+      // 파일을 Base64로 변환하여 저장
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+        sessionStorage.setItem("pendingAnalysisFile", base64Data);
+
+        // 카카오 로그인 시작
+        try {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: "kakao",
+            options: {
+              redirectTo: `${window.location.origin}/api/auth/kakao?redirect=/counseling`,
+            },
+          });
+          if (error) {
+            alert(error.message || "카카오 로그인에 실패했습니다.");
+            sessionStorage.removeItem("pendingAnalysis");
+            sessionStorage.removeItem("pendingAnalysisFile");
+          }
+          // 로그인 페이지로 리다이렉트되므로 여기서 함수 종료
+        } catch (err: any) {
+          alert(err.message || "카카오 로그인 중 오류가 발생했습니다.");
+          sessionStorage.removeItem("pendingAnalysis");
+          sessionStorage.removeItem("pendingAnalysisFile");
+        }
+      };
+      reader.readAsDataURL(selectedFile);
       return;
     }
 
@@ -103,7 +278,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       const emotion =
         userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
       const data = await analyzeImage(selectedFile, emotion);
-      
+
       // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
       if (data.success === false && data.error) {
         alert(data.error);
@@ -113,17 +288,18 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
           const usageData = await response.json();
           if (usageData.success) {
             setUsageLimit({
-              image_analysis_remaining: usageData.usage.image_analysis_remaining,
+              image_analysis_remaining:
+                usageData.usage.image_analysis_remaining,
               image_analysis_limit: usageData.usage.image_analysis_limit,
             });
           }
         }
         return;
       }
-      
+
       setProgress(100);
       setCurrentStep("완료!");
-      
+
       // 사용 횟수 다시 조회
       const response = await fetch("/api/usage-limits");
       if (response.ok) {
@@ -135,7 +311,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
           });
         }
       }
-      
+
       setTimeout(() => {
         onUploadComplete(data);
       }, 300);
@@ -215,7 +391,8 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
           <div className="flex items-center gap-2 text-sm text-blue-800">
             <span className="font-semibold">남은 분석 횟수:</span>
             <span className="font-bold text-blue-600">
-              {usageLimit.image_analysis_remaining} / {usageLimit.image_analysis_limit}
+              {usageLimit.image_analysis_remaining} /{" "}
+              {usageLimit.image_analysis_limit}
             </span>
           </div>
         </div>
@@ -236,7 +413,11 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
       <button
         onClick={handleUpload}
-        disabled={!selectedFile || uploading || (usageLimit !== null && usageLimit.image_analysis_remaining <= 0)}
+        disabled={
+          !selectedFile ||
+          uploading ||
+          (usageLimit !== null && usageLimit.image_analysis_remaining <= 0)
+        }
         className="w-full bg-gradient-to-r from-rose-400 to-pink-400 hover:from-rose-500 hover:to-pink-500 disabled:from-gray-300 disabled:to-gray-400 text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:shadow-none"
       >
         {uploading ? (
@@ -314,33 +495,83 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
             {/* 진행 단계 체크리스트 */}
             <div className="mt-4 space-y-2">
-              <div className={`flex items-center gap-2 text-xs ${progress >= 20 ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 20 ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  {progress >= 20 && <span className="text-white text-xs">✓</span>}
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  progress >= 20 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    progress >= 20 ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  {progress >= 20 && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
                 </div>
                 <span>이미지 업로드</span>
               </div>
-              <div className={`flex items-center gap-2 text-xs ${progress >= 40 ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 40 ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  {progress >= 40 && <span className="text-white text-xs">✓</span>}
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  progress >= 40 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    progress >= 40 ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  {progress >= 40 && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
                 </div>
                 <span>이미지 분석</span>
               </div>
-              <div className={`flex items-center gap-2 text-xs ${progress >= 60 ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 60 ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  {progress >= 60 && <span className="text-white text-xs">✓</span>}
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  progress >= 60 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    progress >= 60 ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  {progress >= 60 && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
                 </div>
                 <span>색상과 형태 분석</span>
               </div>
-              <div className={`flex items-center gap-2 text-xs ${progress >= 80 ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 80 ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  {progress >= 80 && <span className="text-white text-xs">✓</span>}
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  progress >= 80 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    progress >= 80 ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  {progress >= 80 && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
                 </div>
                 <span>감정 언어 분석</span>
               </div>
-              <div className={`flex items-center gap-2 text-xs ${progress >= 95 ? 'text-green-600' : 'text-gray-400'}`}>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 95 ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  {progress >= 95 && <span className="text-white text-xs">✓</span>}
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  progress >= 95 ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    progress >= 95 ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  {progress >= 95 && (
+                    <span className="text-white text-xs">✓</span>
+                  )}
                 </div>
                 <span>리포트 생성</span>
               </div>

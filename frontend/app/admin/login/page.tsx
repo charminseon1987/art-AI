@@ -223,17 +223,23 @@ export default function AdminLoginPage() {
                 type="button"
                 onClick={async () => {
                   try {
-                    const { data, error } = await supabase.auth.signInWithOAuth({
-                      provider: "kakao",
-                      options: {
-                        redirectTo: `${window.location.origin}/api/auth/kakao`,
-                      },
-                    });
+                    const { data, error } = await supabase.auth.signInWithOAuth(
+                      {
+                        provider: "kakao",
+                        options: {
+                          redirectTo: `${window.location.origin}/api/auth/kakao`,
+                        },
+                      }
+                    );
                     if (error) {
-                      setError(error.message || "카카오 로그인에 실패했습니다.");
+                      setError(
+                        error.message || "카카오 로그인에 실패했습니다."
+                      );
                     }
                   } catch (err: any) {
-                    setError(err.message || "카카오 로그인 중 오류가 발생했습니다.");
+                    setError(
+                      err.message || "카카오 로그인 중 오류가 발생했습니다."
+                    );
                   }
                 }}
                 className="w-full mt-4 bg-[#FEE500] text-[#000000] py-3 px-4 rounded-lg font-semibold hover:bg-[#FDD835] transition-all flex items-center justify-center gap-2"

@@ -90,8 +90,10 @@ export default function FingerprintPage() {
             const data = await response.json();
             if (data.success) {
               setUsageLimit({
-                fingerprint_analysis_remaining: data.usage.fingerprint_analysis_remaining,
-                fingerprint_analysis_limit: data.usage.fingerprint_analysis_limit,
+                fingerprint_analysis_remaining:
+                  data.usage.fingerprint_analysis_remaining,
+                fingerprint_analysis_limit:
+                  data.usage.fingerprint_analysis_limit,
               });
             }
           }
@@ -177,7 +179,9 @@ export default function FingerprintPage() {
 
     // 사용 횟수 확인
     if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {
-      alert("분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.");
+      alert(
+        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+      );
       return;
     }
 
@@ -232,8 +236,10 @@ export default function FingerprintPage() {
           const usageData = await usageResponse.json();
           if (usageData.success) {
             setUsageLimit({
-              fingerprint_analysis_remaining: usageData.usage.fingerprint_analysis_remaining,
-              fingerprint_analysis_limit: usageData.usage.fingerprint_analysis_limit,
+              fingerprint_analysis_remaining:
+                usageData.usage.fingerprint_analysis_remaining,
+              fingerprint_analysis_limit:
+                usageData.usage.fingerprint_analysis_limit,
             });
           }
         }
@@ -243,15 +249,17 @@ export default function FingerprintPage() {
 
       if (data.success && data.analysis) {
         setAnalysisResult(data.analysis);
-        
+
         // 사용 횟수 다시 조회
         const usageResponse = await fetch("/api/usage-limits");
         if (usageResponse.ok) {
           const usageData = await usageResponse.json();
           if (usageData.success) {
             setUsageLimit({
-              fingerprint_analysis_remaining: usageData.usage.fingerprint_analysis_remaining,
-              fingerprint_analysis_limit: usageData.usage.fingerprint_analysis_limit,
+              fingerprint_analysis_remaining:
+                usageData.usage.fingerprint_analysis_remaining,
+              fingerprint_analysis_limit:
+                usageData.usage.fingerprint_analysis_limit,
             });
           }
         }
@@ -378,8 +386,11 @@ export default function FingerprintPage() {
                 <p className="text-lg text-gray-700 leading-relaxed mb-4">
                   이 세 곳에서 형성된 지문이 빈 공간을 채우며 퍼져나가 완전한
                   지문 패턴을 만듭니다. 완전히 형성된 지문은{" "}
-                  <strong>아치형(Arch), 고리형(Loop), 나선형(Whorl), 복합형 (Composite)</strong> 네
-                  가지 주요 패턴으로 분류됩니다.
+                  <strong>
+                    아치형(Arch), 고리형(Loop), 나선형(Whorl), 복합형
+                    (Composite)
+                  </strong>{" "}
+                  네 가지 주요 패턴으로 분류됩니다.
                 </p>
                 <p className="text-lg leading-relaxed font-semibold text-pink-700">
                   ⚠️ 한번 형성된 지문 패턴은 평생 변하지 않습니다.
@@ -664,30 +675,38 @@ export default function FingerprintPage() {
               <div className="flex items-center gap-2 text-sm text-blue-800">
                 <span className="font-semibold">남은 분석 횟수:</span>
                 <span className="font-bold text-blue-600">
-                  {usageLimit.fingerprint_analysis_remaining} / {usageLimit.fingerprint_analysis_limit}
+                  {usageLimit.fingerprint_analysis_remaining} /{" "}
+                  {usageLimit.fingerprint_analysis_limit}
                 </span>
               </div>
             </div>
           )}
 
           {/* 사용 횟수 초과 안내 */}
-          {usageLimit !== null && usageLimit.fingerprint_analysis_remaining <= 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-red-800">
-                  <p className="font-semibold mb-1">분석회수를 초과했습니다.</p>
-                  <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+          {usageLimit !== null &&
+            usageLimit.fingerprint_analysis_remaining <= 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-800">
+                    <p className="font-semibold mb-1">
+                      분석회수를 초과했습니다.
+                    </p>
+                    <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {selectedFile && (
             <div className="text-center">
               <button
                 onClick={handleAnalyzeFingerprint}
-                disabled={isAnalyzing || (usageLimit !== null && usageLimit.fingerprint_analysis_remaining <= 0)}
+                disabled={
+                  isAnalyzing ||
+                  (usageLimit !== null &&
+                    usageLimit.fingerprint_analysis_remaining <= 0)
+                }
                 className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 mx-auto hover:scale-105"
               >
                 {isAnalyzing ? (
@@ -710,7 +729,10 @@ export default function FingerprintPage() {
         <div className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 rounded-2xl shadow-2xl p-10 text-white text-center mb-8 relative overflow-hidden">
           {/* 배경 애니메이션 blob */}
           <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full opacity-10 blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-300 rounded-full opacity-10 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div
+            className="absolute bottom-0 right-0 w-96 h-96 bg-purple-300 rounded-full opacity-10 blur-3xl animate-pulse"
+            style={{ animationDelay: "1s" }}
+          ></div>
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 bg-white bg-opacity-20 px-4 py-2 rounded-full mb-4">

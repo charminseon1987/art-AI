@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     // 현재 사용자 확인
     const user = await getCurrentUser();
-    
+
     if (!user) {
       return NextResponse.json(
         { error: "인증이 필요합니다." },
@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
         image_analysis_count: imageCount,
         fingerprint_analysis_count: fingerprintCount,
         image_analysis_remaining: Math.max(0, maxImage - imageCount),
-        fingerprint_analysis_remaining: Math.max(0, maxFingerprint - fingerprintCount),
+        fingerprint_analysis_remaining: Math.max(
+          0,
+          maxFingerprint - fingerprintCount
+        ),
         image_analysis_limit: maxImage,
         fingerprint_analysis_limit: maxFingerprint,
       },
@@ -55,4 +58,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
