@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { getCurrentUser } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import { KAKAO_CHANNEL_URL } from "@/lib/constants";
 
 interface FingerprintData {
   thumb_personality?: {
@@ -106,6 +108,49 @@ export default function FingerprintPage() {
     };
 
     fetchUsageLimit();
+
+    // 카카오 인증 후 돌아왔을 때 대기 중인 분석 자동 처리
+    const handlePendingAnalysis = async () => {
+      const pendingData = sessionStorage.getItem("pendingFingerprintAnalysis");
+      const pendingFile = sessionStorage.getItem(
+        "pendingFingerprintAnalysisFile"
+      );
+
+      if (pendingData && pendingFile) {
+        try {
+          const fileData = JSON.parse(pendingData);
+
+          // Base64를 File 객체로 변환
+          const response = await fetch(pendingFile);
+          const blob = await response.blob();
+          const file = new File([blob], fileData.name, { type: fileData.type });
+
+          setSelectedFile(file);
+          if (fileData.preview) {
+            setPreviewUrl(fileData.preview);
+          }
+
+          // 세션 스토리지 정리
+          sessionStorage.removeItem("pendingFingerprintAnalysis");
+          sessionStorage.removeItem("pendingFingerprintAnalysisFile");
+
+          // 사용자 인증 확인 후 분석 시작
+          const user = await getCurrentUser();
+          if (user) {
+            // 약간의 지연 후 분석 시작 (UI 업데이트 대기)
+            setTimeout(() => {
+              handleAnalyzeFingerprint();
+            }, 500);
+          }
+        } catch (error) {
+          console.error("대기 중인 분석 처리 오류:", error);
+          sessionStorage.removeItem("pendingFingerprintAnalysis");
+          sessionStorage.removeItem("pendingFingerprintAnalysisFile");
+        }
+      }
+    };
+
+    handlePendingAnalysis();
   }, []);
 
   // 채팅 초기 메시지
@@ -177,17 +222,62 @@ export default function FingerprintPage() {
       return;
     }
 
+    // 파일 크기 확인 (10MB 제한)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      alert("파일 크기는 10MB 이하여야 합니다.");
+      return;
+    }
+
+    // 사용자 인증 상태 확인
+    const user = await getCurrentUser();
+    if (!user) {
+      // 인증되지 않은 경우 파일 정보를 세션 스토리지에 저장
+      const fileData = {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        preview: previewUrl,
+      };
+      sessionStorage.setItem(
+        "pendingFingerprintAnalysis",
+        JSON.stringify(fileData)
+      );
+
+      // 파일을 Base64로 변환하여 저장
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+        sessionStorage.setItem("pendingFingerprintAnalysisFile", base64Data);
+
+        // 카카오 로그인 시작
+        try {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: "kakao",
+            options: {
+              redirectTo: `${window.location.origin}/api/auth/kakao?redirect=/fingerprint`,
+            },
+          });
+          if (error) {
+            alert(error.message || "카카오 로그인에 실패했습니다.");
+            sessionStorage.removeItem("pendingFingerprintAnalysis");
+            sessionStorage.removeItem("pendingFingerprintAnalysisFile");
+          }
+          // 로그인 페이지로 리다이렉트되므로 여기서 함수 종료
+        } catch (err: any) {
+          alert(err.message || "카카오 로그인 중 오류가 발생했습니다.");
+          sessionStorage.removeItem("pendingFingerprintAnalysis");
+          sessionStorage.removeItem("pendingFingerprintAnalysisFile");
+        }
+      };
+      reader.readAsDataURL(selectedFile);
+      return;
+    }
+
     // 사용 횟수 확인
     if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {
       alert(
         "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
       );
-      return;
-    }
-
-    // 파일 크기 확인 (10MB 제한)
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      alert("파일 크기는 10MB 이하여야 합니다.");
       return;
     }
 
@@ -688,11 +778,29 @@ export default function FingerprintPage() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-red-800">
-                    <p className="font-semibold mb-1">
-                      분석회수를 초과했습니다.
-                    </p>
-                    <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+                  <div className="flex-1">
+                    <div className="text-sm text-red-800 mb-3">
+                      <p className="font-semibold mb-1">
+                        분석회수를 초과했습니다.
+                      </p>
+                      <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Link
+                        href="/consultation"
+                        className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        상담 예약하기
+                      </Link>
+                      <a
+                        href={KAKAO_CHANNEL_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        카카오톡 문의
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

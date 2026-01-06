@@ -85,84 +85,79 @@ async def analyze_image(
     emotion: Optional[str] = Form(None),
     authorization: Optional[str] = Header(None)
 ):
-    """이미지 분석 API (인증 필요)"""
-    # 토큰 검증
+    """이미지 분석 API (카카오 인증 필수)"""
+    # 토큰 검증 (카카오 인증 필수)
     try:
         user_info = verify_supabase_token(authorization)
+        user_id = user_info.get("id")
     except HTTPException as e:
-        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
-        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
-            try:
-                verify_admin_token(authorization)
-            except:
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "인증이 필요합니다."}
-                )
-        else:
-            return JSONResponse(
-                status_code=e.status_code,
-                content={"error": e.detail}
-            )
+        # Supabase 인증 실패 시 에러 반환 (폴백 제거)
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
     except Exception as e:
-        # 기타 오류 시 기존 방식으로 폴백
-        try:
-            verify_admin_token(authorization)
-        except:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "인증이 필요합니다."}
-            )
+        # 기타 오류 시 에러 반환
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
+    
+    if not user_id:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
     
     try:
-        # 사용 횟수 확인 (인증된 사용자인 경우만)
-        user_id = None
+        # 카카오 사용자 ID 가져오기 (필수)
         kakao_id = None
-        try:
-            user_info = verify_supabase_token(authorization)
-            user_id = user_info.get("id")
-            
-            # 카카오 사용자 ID 가져오기 (user_usage_limits 테이블에서)
-            if user_id and usage_limit_service.supabase:
-                try:
-                    usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
-                    if usage_response.data and len(usage_response.data) > 0:
-                        kakao_id = usage_response.data[0].get("kakao_id")
-                except:
-                    pass  # 카카오 ID 조회 실패해도 계속 진행
-        except:
-            pass  # 인증 실패 시 user_id는 None으로 유지
+        if user_id and usage_limit_service.supabase:
+            try:
+                usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
+                if usage_response.data and len(usage_response.data) > 0:
+                    kakao_id = usage_response.data[0].get("kakao_id")
+            except Exception as e:
+                print(f"카카오 ID 조회 오류: {e}")
         
-        if user_id:
-            # 카카오 ID로 사용 횟수 확인 (카카오 ID가 있으면 우선 사용)
-            if kakao_id:
-                # 카카오 ID로 레코드 찾기
-                try:
-                    kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
-                    if kakao_response.data and len(kakao_response.data) > 0:
-                        kakao_limit = kakao_response.data[0]
-                        count = kakao_limit.get("image_analysis_count", 0)
-                        if count >= usage_limit_service.MAX_IMAGE_ANALYSIS:
-                            return JSONResponse(
-                                status_code=200,
-                                content={
-                                    "success": False,
-                                    "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
-                                }
-                            )
-                except:
-                    pass  # 카카오 ID 조회 실패 시 user_id로 확인
-            
-            # user_id로 사용 횟수 확인
-            is_allowed, error_message = usage_limit_service.check_image_analysis_limit(user_id)
-            if not is_allowed:
-                return JSONResponse(
-                    status_code=200,
-                    content={
-                        "success": False,
-                        "error": error_message
-                    }
-                )
+        # 카카오 ID가 없으면 분석 불가
+        if not kakao_id:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "error": "카카오 인증이 필요합니다. 카카오로 로그인해주세요."
+                }
+            )
+        
+        # 카카오 ID로 사용 횟수 확인
+        if usage_limit_service.supabase:
+            try:
+                kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
+                if kakao_response.data and len(kakao_response.data) > 0:
+                    kakao_limit = kakao_response.data[0]
+                    count = kakao_limit.get("image_analysis_count", 0)
+                    if count >= usage_limit_service.MAX_IMAGE_ANALYSIS:
+                        return JSONResponse(
+                            status_code=200,
+                            content={
+                                "success": False,
+                                "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+                            }
+                        )
+            except Exception as e:
+                print(f"카카오 ID 기반 사용 횟수 확인 오류: {e}")
+        
+        # user_id로도 사용 횟수 확인 (보조)
+        is_allowed, error_message = usage_limit_service.check_image_analysis_limit(user_id)
+        if not is_allowed:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": False,
+                    "error": error_message
+                }
+            )
         
         # 파일 읽기
         contents = await file.read()
@@ -768,84 +763,79 @@ async def analyze_fingerprint(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(None)
 ):
-    """엄지 지문 분석 API (인증 필요)"""
-    # 토큰 검증
+    """엄지 지문 분석 API (카카오 인증 필수)"""
+    # 토큰 검증 (카카오 인증 필수)
     try:
         user_info = verify_supabase_token(authorization)
+        user_id = user_info.get("id")
     except HTTPException as e:
-        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
-        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
-            try:
-                verify_admin_token(authorization)
-            except:
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "인증이 필요합니다."}
-                )
-        else:
-            return JSONResponse(
-                status_code=e.status_code,
-                content={"error": e.detail}
-            )
+        # Supabase 인증 실패 시 에러 반환 (폴백 제거)
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
     except Exception as e:
-        # 기타 오류 시 기존 방식으로 폴백
-        try:
-            verify_admin_token(authorization)
-        except:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "인증이 필요합니다."}
-            )
+        # 기타 오류 시 에러 반환
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
+    
+    if not user_id:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "카카오 인증이 필요합니다."}
+        )
     
     try:
-        # 사용 횟수 확인 (인증된 사용자인 경우만)
-        user_id = None
+        # 카카오 사용자 ID 가져오기 (필수)
         kakao_id = None
-        try:
-            user_info = verify_supabase_token(authorization)
-            user_id = user_info.get("id")
-            
-            # 카카오 사용자 ID 가져오기 (user_usage_limits 테이블에서)
-            if user_id and usage_limit_service.supabase:
-                try:
-                    usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
-                    if usage_response.data and len(usage_response.data) > 0:
-                        kakao_id = usage_response.data[0].get("kakao_id")
-                except:
-                    pass  # 카카오 ID 조회 실패해도 계속 진행
-        except:
-            pass  # 인증 실패 시 user_id는 None으로 유지
+        if user_id and usage_limit_service.supabase:
+            try:
+                usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
+                if usage_response.data and len(usage_response.data) > 0:
+                    kakao_id = usage_response.data[0].get("kakao_id")
+            except Exception as e:
+                print(f"카카오 ID 조회 오류: {e}")
         
-        if user_id:
-            # 카카오 ID로 사용 횟수 확인 (카카오 ID가 있으면 우선 사용)
-            if kakao_id:
-                # 카카오 ID로 레코드 찾기
-                try:
-                    kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
-                    if kakao_response.data and len(kakao_response.data) > 0:
-                        kakao_limit = kakao_response.data[0]
-                        count = kakao_limit.get("fingerprint_analysis_count", 0)
-                        if count >= usage_limit_service.MAX_FINGERPRINT_ANALYSIS:
-                            return JSONResponse(
-                                status_code=200,
-                                content={
-                                    "success": False,
-                                    "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
-                                }
-                            )
-                except:
-                    pass  # 카카오 ID 조회 실패 시 user_id로 확인
-            
-            # user_id로 사용 횟수 확인
-            is_allowed, error_message = usage_limit_service.check_fingerprint_analysis_limit(user_id)
-            if not is_allowed:
-                return JSONResponse(
-                    status_code=200,
-                    content={
-                        "success": False,
-                        "error": error_message
-                    }
-                )
+        # 카카오 ID가 없으면 분석 불가
+        if not kakao_id:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "error": "카카오 인증이 필요합니다. 카카오로 로그인해주세요."
+                }
+            )
+        
+        # 카카오 ID로 사용 횟수 확인
+        if usage_limit_service.supabase:
+            try:
+                kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
+                if kakao_response.data and len(kakao_response.data) > 0:
+                    kakao_limit = kakao_response.data[0]
+                    count = kakao_limit.get("fingerprint_analysis_count", 0)
+                    if count >= usage_limit_service.MAX_FINGERPRINT_ANALYSIS:
+                        return JSONResponse(
+                            status_code=200,
+                            content={
+                                "success": False,
+                                "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+                            }
+                        )
+            except Exception as e:
+                print(f"카카오 ID 기반 사용 횟수 확인 오류: {e}")
+        
+        # user_id로도 사용 횟수 확인 (보조)
+        is_allowed, error_message = usage_limit_service.check_fingerprint_analysis_limit(user_id)
+        if not is_allowed:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": False,
+                    "error": error_message
+                }
+            )
         
         # 파일 읽기
         contents = await file.read()

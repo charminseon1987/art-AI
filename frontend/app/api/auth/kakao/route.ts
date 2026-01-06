@@ -15,6 +15,11 @@ export async function GET(request: NextRequest) {
               `/counseling?error=${encodeURIComponent(error)}`,
               request.url
             )
+          : redirect === "/fingerprint"
+          ? new URL(
+              `/fingerprint?error=${encodeURIComponent(error)}`,
+              request.url
+            )
           : new URL(
               `/admin/login?error=${encodeURIComponent(error)}`,
               request.url
@@ -27,6 +32,11 @@ export async function GET(request: NextRequest) {
         redirect === "/counseling"
           ? new URL(
               "/counseling?error=카카오 인증 코드가 없습니다.",
+              request.url
+            )
+          : redirect === "/fingerprint"
+          ? new URL(
+              "/fingerprint?error=카카오 인증 코드가 없습니다.",
               request.url
             )
           : new URL(
@@ -46,6 +56,13 @@ export async function GET(request: NextRequest) {
         redirect === "/counseling"
           ? new URL(
               `/counseling?error=${encodeURIComponent(
+                authError?.message || "카카오 로그인에 실패했습니다."
+              )}`,
+              request.url
+            )
+          : redirect === "/fingerprint"
+          ? new URL(
+              `/fingerprint?error=${encodeURIComponent(
                 authError?.message || "카카오 로그인에 실패했습니다."
               )}`,
               request.url
@@ -112,6 +129,9 @@ export async function GET(request: NextRequest) {
     if (redirect === "/counseling") {
       // 상담 페이지로 리다이렉트
       return NextResponse.redirect(new URL("/counseling", request.url));
+    } else if (redirect === "/fingerprint") {
+      // 지문 분석 페이지로 리다이렉트
+      return NextResponse.redirect(new URL("/fingerprint", request.url));
     } else {
       // 관리자 로그인 페이지로 리다이렉트
       const redirectUrl = new URL("/admin/login", request.url);
@@ -136,6 +156,13 @@ export async function GET(request: NextRequest) {
       redirect === "/counseling"
         ? new URL(
             `/counseling?error=${encodeURIComponent(
+              error.message || "카카오 로그인 중 오류가 발생했습니다."
+            )}`,
+            request.url
+          )
+        : redirect === "/fingerprint"
+        ? new URL(
+            `/fingerprint?error=${encodeURIComponent(
               error.message || "카카오 로그인 중 오류가 발생했습니다."
             )}`,
             request.url
