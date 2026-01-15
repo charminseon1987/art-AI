@@ -39,6 +39,9 @@ dependencies = [
     "python-multipart>=0.0.6",
     "pip>=25.3",
     "aiofiles>=25.1.0",
+    # Supabase
+    "supabase>=2.0.0",
+    "postgrest>=0.13.0",
 ]
 
 [project.optional-dependencies]

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { ArrowRight, CheckCircle, Sparkles, Heart, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { use3DMouse } from "@/hooks/use3DMouse";
 
 export default function Home() {
   const [isVisible, setIsVisible] = useState({
@@ -10,6 +11,12 @@ export default function Home() {
     trust: false,
     difference: false,
     cta: false,
+  });
+
+  const heroSectionRef = useRef<HTMLElement>(null);
+  const mousePosition = use3DMouse({
+    elementRef: heroSectionRef,
+    intensity: 1,
   });
 
   useEffect(() => {
@@ -38,15 +45,57 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
+  // 3D transform 계산
+  const heroTransform = {
+    transform: `perspective(1000px) rotateX(${mousePosition.y * 5}deg) rotateY(${mousePosition.x * 5}deg)`,
+  };
+
+  const blob1Transform = {
+    transform: `translate3d(${mousePosition.x * 30}px, ${mousePosition.y * 30}px, ${mousePosition.y * -50}px)`,
+  };
+
+  const blob2Transform = {
+    transform: `translate3d(${mousePosition.x * -25}px, ${mousePosition.y * -25}px, ${mousePosition.x * 50}px)`,
+  };
+
+  const blob3Transform = {
+    transform: `translate3d(${mousePosition.x * 20}px, ${mousePosition.y * 20}px, ${mousePosition.y * 40}px)`,
+  };
+
+  const titleTransform = {
+    transform: `perspective(1000px) rotateX(${mousePosition.y * 3}deg) rotateY(${mousePosition.x * 3}deg) translateZ(20px)`,
+  };
+
+  const buttonTransform1 = {
+    transform: `perspective(1000px) rotateX(${mousePosition.y * 2}deg) rotateY(${mousePosition.x * 2}deg) translateZ(10px)`,
+  };
+
+  const buttonTransform2 = {
+    transform: `perspective(1000px) rotateX(${mousePosition.y * 2}deg) rotateY(${mousePosition.x * 2}deg) translateZ(10px)`,
+  };
+
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Hero Section */}
-      <section className="relative text-center py-20 px-4 bg-gradient-to-b from-pink-50 via-rose-50 to-white overflow-hidden">
+      <section
+        ref={heroSectionRef}
+        className="relative text-center py-20 px-4 bg-gradient-to-b from-blue-50 via-cyan-50 to-white overflow-hidden hero-3d-container"
+        style={heroTransform}
+      >
         {/* 배경 장식 요소 */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-fuchsia-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+          <div
+            className="absolute -top-40 -right-40 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"
+            style={blob1Transform}
+          ></div>
+          <div
+            className="absolute -bottom-40 -left-40 w-96 h-96 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"
+            style={blob2Transform}
+          ></div>
+          <div
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"
+            style={blob3Transform}
+          ></div>
         </div>
 
         <div
@@ -56,21 +105,24 @@ export default function Home() {
               : "opacity-0 translate-y-10"
           }`}
         >
-          <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-700 px-4 py-2 rounded-full mb-6 animate-bounce-slow">
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mb-6 animate-bounce-slow">
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-semibold">5살부터 시작하는 평생 미술 여정</span>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-800 mb-6 leading-tight">
+          <h1
+            className="text-5xl md:text-6xl font-bold text-gray-800 mb-6 leading-tight"
+            style={titleTransform}
+          >
             유아 · 초등 연계
             <br />
-            <span className="bg-gradient-to-r from-pink-500 to-fuchsia-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-500 to-cyan-600 bg-clip-text text-transparent">
               개인 미술 수업
             </span>
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-600 mb-12 leading-relaxed max-w-2xl mx-auto">
-            <span className="font-semibold text-pink-600">5살</span>부터 시작해
+            <span className="font-semibold text-blue-600">5살</span>부터 시작해
             <br />
             초등, 중·고등까지 함께 성장해온
             <br />
@@ -80,14 +132,16 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <Link
               href="/counseling"
-              className="group bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:from-pink-600 hover:to-fuchsia-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+              className="group bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+              style={buttonTransform1}
             >
               그림 상담 받아보기
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="/consultation"
-              className="group bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+              className="group bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl hover:scale-105 transform"
+              style={buttonTransform2}
             >
               미술 수업 상담 신청
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -125,9 +179,9 @@ export default function Home() {
             }`}
           >
             <div className="inline-flex items-center gap-2 mb-4">
-              <Heart className="w-6 h-6 text-red-500" />
+              <Heart className="w-6 h-6 text-blue-500" />
               <h3 className="text-3xl font-bold text-gray-800">신뢰</h3>
-              <Heart className="w-6 h-6 text-red-500" />
+              <Heart className="w-6 h-6 text-blue-500" />
             </div>
             <p className="text-gray-600 text-lg">
               오랜 시간 함께한 경험이 가장 큰 자산입니다
@@ -137,17 +191,17 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-6 mb-10">
             {/* 카드 1 */}
             <div
-              className={`group bg-gradient-to-br from-pink-50 to-rose-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-pink-100 ${
+              className={`group bg-gradient-to-br from-blue-50 to-cyan-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-blue-100 ${
                 isVisible.trust
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-10"
               }`}
               style={{ transitionDelay: "100ms" }}
             >
-              <div className="bg-pink-500 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <div className="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Users className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-bold text-pink-600 mb-2">10+</div>
+              <div className="text-4xl font-bold text-blue-600 mb-2">10+</div>
               <div className="text-lg font-semibold text-gray-800 mb-2">
                 지속 수업 연수
               </div>
@@ -160,17 +214,17 @@ export default function Home() {
 
             {/* 카드 2 */}
             <div
-              className={`group bg-gradient-to-br from-fuchsia-50 to-purple-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-fuchsia-100 ${
+              className={`group bg-gradient-to-br from-cyan-50 to-indigo-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-cyan-100 ${
                 isVisible.trust
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-10"
               }`}
               style={{ transitionDelay: "200ms" }}
             >
-              <div className="bg-fuchsia-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <div className="bg-cyan-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <CheckCircle className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-bold text-fuchsia-600 mb-2">35+</div>
+              <div className="text-4xl font-bold text-cyan-600 mb-2">35+</div>
               <div className="text-lg font-semibold text-gray-800 mb-2">
                 진로·심리 상담
               </div>
@@ -183,17 +237,17 @@ export default function Home() {
 
             {/* 카드 3 */}
             <div
-              className={`group bg-gradient-to-br from-rose-50 to-orange-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-rose-100 ${
+              className={`group bg-gradient-to-br from-indigo-50 to-blue-50 p-8 rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-indigo-100 ${
                 isVisible.trust
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-10"
               }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <div className="bg-rose-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+              <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
-              <div className="text-4xl font-bold text-rose-600 mb-2">100+</div>
+              <div className="text-4xl font-bold text-indigo-600 mb-2">100+</div>
               <div className="text-lg font-semibold text-gray-800 mb-2">
                 지문 상담 건수
               </div>
@@ -206,7 +260,7 @@ export default function Home() {
           </div>
 
           <div
-            className={`text-center bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white p-6 rounded-2xl shadow-xl transition-all duration-1000 ${
+            className={`text-center bg-gradient-to-r from-blue-500 to-cyan-600 text-white p-6 rounded-2xl shadow-xl transition-all duration-1000 ${
               isVisible.trust
                 ? "opacity-100 scale-100"
                 : "opacity-0 scale-95"
@@ -222,7 +276,7 @@ export default function Home() {
 
       {/* 차별점 섹션 */}
       <section
-        className="py-16 px-4 bg-gradient-to-br from-pink-50 via-rose-50 to-fuchsia-50 relative"
+        className="py-16 px-4 bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50 relative"
         data-section="difference"
       >
         <div className="max-w-4xl mx-auto">
@@ -233,29 +287,29 @@ export default function Home() {
                 : "opacity-0 translate-y-10"
             }`}
           >
-            이 수업이 <span className="text-pink-600">다른 이유</span>
+            이 수업이 <span className="text-blue-600">다른 이유</span>
           </h3>
 
           <div
-            className={`group bg-white p-10 rounded-3xl border-l-8 border-pink-500 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] ${
+            className={`group bg-white p-10 rounded-3xl border-l-8 border-blue-500 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02] ${
               isVisible.difference
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-10"
             }`}
           >
             <div className="flex items-start gap-4 mb-6">
-              <div className="bg-pink-100 p-3 rounded-full">
-                <Heart className="w-8 h-8 text-pink-600" />
+              <div className="bg-blue-100 p-3 rounded-full">
+                <Heart className="w-8 h-8 text-blue-600" />
               </div>
               <h4 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight flex-1">
-                아이에게 <span className="text-pink-600">"왜 이렇게 그렸어?"</span>
+                아이에게 <span className="text-blue-600">"왜 이렇게 그렸어?"</span>
                 <br className="hidden md:block" />
                 라고 묻지 않습니다
               </h4>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-6 rounded-xl border border-pink-200 hover:shadow-lg transition-all duration-300">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition-all duration-300">
                 <div className="text-3xl mb-3">🎨</div>
                 <h5 className="font-bold text-gray-800 mb-2 text-lg">평가하지 않습니다</h5>
                 <p className="text-gray-600 text-sm">
@@ -263,7 +317,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 p-6 rounded-xl border border-fuchsia-200 hover:shadow-lg transition-all duration-300">
+              <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-6 rounded-xl border border-cyan-200 hover:shadow-lg transition-all duration-300">
                 <div className="text-3xl mb-3">⏰</div>
                 <h5 className="font-bold text-gray-800 mb-2 text-lg">기다립니다</h5>
                 <p className="text-gray-600 text-sm">
@@ -271,7 +325,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-rose-50 to-orange-100 p-6 rounded-xl border border-rose-200 hover:shadow-lg transition-all duration-300">
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-100 p-6 rounded-xl border border-indigo-200 hover:shadow-lg transition-all duration-300">
                 <div className="text-3xl mb-3">💬</div>
                 <h5 className="font-bold text-gray-800 mb-2 text-lg">자연스럽게</h5>
                 <p className="text-gray-600 text-sm">
@@ -280,7 +334,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-pink-500 to-fuchsia-600 p-6 rounded-xl">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-600 p-6 rounded-xl">
               <p className="text-white text-xl font-semibold text-center italic">
                 "아이의 그림은 결과가 아니라 이야기의 시작입니다"
               </p>
@@ -291,13 +345,13 @@ export default function Home() {
 
       {/* CTA 섹션 */}
       <section
-        className="py-20 px-4 bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white relative overflow-hidden"
+        className="py-20 px-4 bg-gradient-to-r from-blue-500 via-cyan-600 to-indigo-600 text-white relative overflow-hidden"
         data-section="cta"
       >
         {/* 배경 장식 */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-10 right-10 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl opacity-10 animate-pulse"></div>
-          <div className="absolute bottom-10 left-10 w-64 h-64 bg-rose-300 rounded-full mix-blend-overlay filter blur-3xl opacity-10 animate-pulse animation-delay-2000"></div>
+          <div className="absolute bottom-10 left-10 w-64 h-64 bg-cyan-300 rounded-full mix-blend-overlay filter blur-3xl opacity-10 animate-pulse animation-delay-2000"></div>
         </div>
 
         <div
@@ -316,7 +370,7 @@ export default function Home() {
           </h3>
           <Link
             href="/counseling"
-            className="inline-flex items-center gap-3 bg-white text-pink-600 hover:bg-gray-100 px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-3xl hover:scale-105 transform"
+            className="inline-flex items-center gap-3 bg-white text-blue-600 hover:bg-gray-100 px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-3xl hover:scale-105 transform"
           >
             <Sparkles className="w-6 h-6" />
             그림 상담 탭으로 이동
@@ -355,6 +409,16 @@ export default function Home() {
 
         .animate-bounce-slow {
           animation: bounce 3s infinite;
+        }
+
+        .hero-3d-container {
+          perspective: 1000px;
+          transform-style: preserve-3d;
+          transition: transform 0.1s ease-out;
+        }
+
+        .hero-3d-container > * {
+          transform-style: preserve-3d;
         }
       `}</style>
     </div>

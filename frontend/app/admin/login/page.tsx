@@ -232,14 +232,34 @@ export default function AdminLoginPage() {
                       }
                     );
                     if (error) {
-                      setError(
-                        error.message || "카카오 로그인에 실패했습니다."
-                      );
+                      let errorMessage = error.message || "카카오 로그인에 실패했습니다.";
+                      
+                      // Provider가 활성화되지 않은 경우 더 명확한 메시지 표시
+                      if (error.message?.includes("provider is not enabled") || 
+                          error.message?.includes("Unsupported provider")) {
+                        errorMessage = "카카오 로그인이 활성화되지 않았습니다.\n\n" +
+                          "Supabase 대시보드에서 다음을 확인해주세요:\n" +
+                          "1. Authentication → Providers 메뉴로 이동\n" +
+                          "2. Kakao Provider를 찾아 Enable로 활성화\n" +
+                          "3. Client ID와 Client Secret을 입력하고 저장";
+                      }
+                      
+                      setError(errorMessage);
                     }
                   } catch (err: any) {
-                    setError(
-                      err.message || "카카오 로그인 중 오류가 발생했습니다."
-                    );
+                    let errorMessage = err.message || "카카오 로그인 중 오류가 발생했습니다.";
+                    
+                    // Provider가 활성화되지 않은 경우 더 명확한 메시지 표시
+                    if (err.message?.includes("provider is not enabled") || 
+                        err.message?.includes("Unsupported provider")) {
+                      errorMessage = "카카오 로그인이 활성화되지 않았습니다.\n\n" +
+                        "Supabase 대시보드에서 다음을 확인해주세요:\n" +
+                        "1. Authentication → Providers 메뉴로 이동\n" +
+                        "2. Kakao Provider를 찾아 Enable로 활성화\n" +
+                        "3. Client ID와 Client Secret을 입력하고 저장";
+                    }
+                    
+                    setError(errorMessage);
                   }
                 }}
                 className="w-full mt-4 bg-[#FEE500] text-[#000000] py-3 px-4 rounded-lg font-semibold hover:bg-[#FDD835] transition-all flex items-center justify-center gap-2"

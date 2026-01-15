@@ -88,6 +88,33 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ## 문제 해결
 
+### ❌ "Unsupported provider: provider is not enabled" 에러
+
+이 에러는 **Supabase에서 Kakao OAuth Provider가 활성화되지 않았을 때** 발생합니다.
+
+**해결 방법:**
+
+1. **Supabase 대시보드 접속**
+   - [Supabase Dashboard](https://app.supabase.com)에 로그인
+   - 해당 프로젝트 선택
+
+2. **Authentication → Providers 메뉴로 이동**
+   - 왼쪽 사이드바에서 `Authentication` 클릭
+   - 상단 탭에서 `Providers` 선택
+
+3. **Kakao Provider 활성화**
+   - Provider 목록에서 `Kakao` 찾기
+   - `Enable` 토글을 **ON**으로 변경
+   - 다음 정보 입력:
+     - **Kakao Client ID**: 카카오 개발자 콘솔의 REST API 키
+     - **Kakao Client Secret**: 카카오 개발자 콘솔에서 생성한 Client Secret
+   - `Save` 버튼 클릭
+
+4. **확인 사항**
+   - Kakao Provider가 `Enabled` 상태인지 확인
+   - Client ID와 Client Secret이 올바르게 입력되었는지 확인
+   - Redirect URL이 `https://your-project-id.supabase.co/auth/v1/callback` 형식인지 확인
+
 ### Redirect URI 불일치 오류
 
 - 카카오 개발자 콘솔의 Redirect URI와 Supabase의 Redirect URL이 정확히 일치해야 합니다

@@ -103,8 +103,10 @@ async function getAuthToken(): Promise<string | null> {
 
 export async function getReports() {
   try {
+    const pythonBackendUrl =
+      process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
     const token = await getAuthToken();
-    const response = await axios.get(`/api/reports`, {
+    const response = await axios.get(`${pythonBackendUrl}/api/reports`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     return response.data;
@@ -283,8 +285,10 @@ export async function getContacts(): Promise<{
   contacts: ContactInquiry[];
 }> {
   try {
+    const pythonBackendUrl =
+      process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
     const token = await getAuthToken();
-    const response = await axios.get(`/api/contacts`, {
+    const response = await axios.get(`${pythonBackendUrl}/api/contacts`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     return response.data;
