@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { analyzeImage } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 
 interface ImageUploadProps {
   onUploadComplete: (data: any) => void;
@@ -70,10 +69,18 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     try {
       const emotionValue =
         emotion && emotion !== "선택 안함" ? emotion : undefined;
+      
+      console.log("[ImageUpload] 인증 후 분석 시작:", {
+        fileName: file.name,
+        fileSize: file.size,
+        emotion: emotionValue || "없음",
+      });
+
       const data = await analyzeImage(file, emotionValue);
 
       // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
       if (data.success === false && data.error) {
+        console.error("[ImageUpload] 분석 실패:", data.error);
         alert(data.error);
         // 사용 횟수 다시 조회
         const response = await fetch("/api/usage-limits");
@@ -89,6 +96,11 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         }
         return;
       }
+
+      console.log("[ImageUpload] 분석 성공:", {
+        reportId: data.report_id,
+        chatReady: data.chat_ready,
+      });
 
       setProgress(100);
       setCurrentStep("완료!");
@@ -109,18 +121,40 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         onUploadComplete(data);
       }, 300);
     } catch (error: any) {
-      console.error("Upload error:", error);
-      const errorMessage =
-        error.message ||
-        error.response?.data?.error ||
-        "업로드 중 오류가 발생했습니다.";
-      alert(errorMessage);
+      console.error("[ImageUpload] 업로드 에러:", {
+        message: error.message,
+        error: error,
+        stack: error.stack,
+        response: error.response,
+      });
+      
+      // 에러 메시지 추출
+      let errorMessage = "분석 중 오류가 발생했습니다.";
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData === 'object') {
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.error_type) {
+            errorMessage += ` (${errorData.error_type})`;
+          }
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // 사용자에게 명확한 메시지 표시
+      alert(`분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`);
     } finally {
       setUploading(false);
+      setProgress(0);
+      setCurrentStep("");
     }
   };
 
-  // 사용 횟수 조회 및 인증 완료 후 자동 분석 시작
+  // 사용 횟수 조회
   useEffect(() => {
     const fetchUsageLimit = async () => {
       try {
@@ -134,50 +168,6 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
                 image_analysis_remaining: data.usage.image_analysis_remaining,
                 image_analysis_limit: data.usage.image_analysis_limit,
               });
-            }
-          }
-
-          // 인증 완료 후 자동 분석 시작
-          const pendingAnalysis = sessionStorage.getItem("pendingAnalysis");
-          const pendingAnalysisFile = sessionStorage.getItem(
-            "pendingAnalysisFile"
-          );
-
-          if (pendingAnalysis && pendingAnalysisFile && !selectedFile) {
-            try {
-              const fileData = JSON.parse(pendingAnalysis);
-
-              // Base64 데이터를 File 객체로 변환
-              const base64Data = pendingAnalysisFile;
-              const byteCharacters = atob(
-                base64Data.split(",")[1] || base64Data
-              );
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-              }
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: fileData.type });
-              const file = new File([blob], fileData.name, {
-                type: fileData.type,
-              });
-
-              setSelectedFile(file);
-              setPreview(fileData.preview);
-              setUserEmotion(fileData.emotion || "");
-
-              // 세션 스토리지 정리
-              sessionStorage.removeItem("pendingAnalysis");
-              sessionStorage.removeItem("pendingAnalysisFile");
-
-              // 자동으로 분석 시작
-              setTimeout(() => {
-                handleUploadAfterAuth(file, fileData.emotion);
-              }, 500);
-            } catch (error) {
-              console.error("자동 분석 시작 오류:", error);
-              sessionStorage.removeItem("pendingAnalysis");
-              sessionStorage.removeItem("pendingAnalysisFile");
             }
           }
         }
@@ -219,6 +209,93 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     }
   }, [uploading]);
 
+  // 이미지 압축 함수
+  const compressImage = (file: File, maxSizeMB: number = 2): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      // 이미 작은 파일이면 압축하지 않음
+      if (file.size <= maxSizeMB * 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          // 최대 크기 조정 (1920px 기준)
+          const maxDimension = 1920;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension;
+              width = maxDimension;
+            } else {
+              width = (width / height) * maxDimension;
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas context를 가져올 수 없습니다."));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 품질 조정 (0.7부터 시작하여 크기에 따라 조정)
+          let quality = 0.7;
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error("이미지 압축에 실패했습니다."));
+                return;
+              }
+
+              // 목표 크기에 맞춰 품질 조정
+              if (blob.size > maxSizeMB * 1024 * 1024) {
+                quality = Math.max(0.3, quality - 0.1);
+                canvas.toBlob(
+                  (compressedBlob) => {
+                    if (!compressedBlob) {
+                      resolve(new File([blob], file.name, { type: file.type }));
+                      return;
+                    }
+                    const compressedFile = new File(
+                      [compressedBlob],
+                      file.name,
+                      { type: file.type }
+                    );
+                    resolve(compressedFile);
+                  },
+                  file.type,
+                  quality
+                );
+              } else {
+                const compressedFile = new File([blob], file.name, {
+                  type: file.type,
+                });
+                resolve(compressedFile);
+              }
+            },
+            file.type,
+            quality
+          );
+        };
+        img.onerror = () => reject(new Error("이미지를 로드할 수 없습니다."));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다."));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -230,57 +307,24 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       return;
     }
 
-    // 사용자 인증 상태 확인
-    const user = await getCurrentUser();
-    if (!user) {
-      // 인증되지 않은 경우 파일 정보를 세션 스토리지에 저장
-      const fileData = {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-        preview: preview,
-        emotion: userEmotion,
-      };
-      sessionStorage.setItem("pendingAnalysis", JSON.stringify(fileData));
-
-      // 파일을 Base64로 변환하여 저장
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string;
-        sessionStorage.setItem("pendingAnalysisFile", base64Data);
-
-        // 카카오 로그인 시작
-        try {
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: "kakao",
-            options: {
-              redirectTo: `${window.location.origin}/api/auth/kakao?redirect=/counseling`,
-            },
-          });
-          if (error) {
-            alert(error.message || "카카오 로그인에 실패했습니다.");
-            sessionStorage.removeItem("pendingAnalysis");
-            sessionStorage.removeItem("pendingAnalysisFile");
-          }
-          // 로그인 페이지로 리다이렉트되므로 여기서 함수 종료
-        } catch (err: any) {
-          alert(err.message || "카카오 로그인 중 오류가 발생했습니다.");
-          sessionStorage.removeItem("pendingAnalysis");
-          sessionStorage.removeItem("pendingAnalysisFile");
-        }
-      };
-      reader.readAsDataURL(selectedFile);
-      return;
-    }
+    // 인증 없이 바로 분석 진행
 
     setUploading(true);
     try {
       const emotion =
         userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
+      
+      console.log("[ImageUpload] 분석 시작:", {
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        emotion: emotion || "없음",
+      });
+
       const data = await analyzeImage(selectedFile, emotion);
 
       // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
       if (data.success === false && data.error) {
+        console.error("[ImageUpload] 분석 실패:", data.error);
         alert(data.error);
         // 사용 횟수 다시 조회
         const response = await fetch("/api/usage-limits");
@@ -296,6 +340,11 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         }
         return;
       }
+
+      console.log("[ImageUpload] 분석 성공:", {
+        reportId: data.report_id,
+        chatReady: data.chat_ready,
+      });
 
       setProgress(100);
       setCurrentStep("완료!");
@@ -316,14 +365,36 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         onUploadComplete(data);
       }, 300);
     } catch (error: any) {
-      console.error("Upload error:", error);
-      const errorMessage =
-        error.message ||
-        error.response?.data?.error ||
-        "업로드 중 오류가 발생했습니다.";
-      alert(errorMessage);
+      console.error("[ImageUpload] 업로드 에러:", {
+        message: error.message,
+        error: error,
+        stack: error.stack,
+        response: error.response,
+      });
+      
+      // 에러 메시지 추출
+      let errorMessage = "분석 중 오류가 발생했습니다.";
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (typeof errorData === 'object') {
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          if (errorData.error_type) {
+            errorMessage += ` (${errorData.error_type})`;
+          }
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // 사용자에게 명확한 메시지 표시
+      alert(`분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`);
     } finally {
       setUploading(false);
+      setProgress(0);
+      setCurrentStep("");
     }
   };
 

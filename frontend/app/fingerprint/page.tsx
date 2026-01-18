@@ -20,7 +20,6 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { getCurrentUser } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import { KAKAO_CHANNEL_URL } from "@/lib/constants";
 
 interface FingerprintData {
@@ -228,50 +227,7 @@ export default function FingerprintPage() {
       return;
     }
 
-    // 사용자 인증 상태 확인
-    const user = await getCurrentUser();
-    if (!user) {
-      // 인증되지 않은 경우 파일 정보를 세션 스토리지에 저장
-      const fileData = {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-        preview: previewUrl,
-      };
-      sessionStorage.setItem(
-        "pendingFingerprintAnalysis",
-        JSON.stringify(fileData)
-      );
-
-      // 파일을 Base64로 변환하여 저장
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string;
-        sessionStorage.setItem("pendingFingerprintAnalysisFile", base64Data);
-
-        // 카카오 로그인 시작
-        try {
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: "kakao",
-            options: {
-              redirectTo: `${window.location.origin}/api/auth/kakao?redirect=/fingerprint`,
-            },
-          });
-          if (error) {
-            alert(error.message || "카카오 로그인에 실패했습니다.");
-            sessionStorage.removeItem("pendingFingerprintAnalysis");
-            sessionStorage.removeItem("pendingFingerprintAnalysisFile");
-          }
-          // 로그인 페이지로 리다이렉트되므로 여기서 함수 종료
-        } catch (err: any) {
-          alert(err.message || "카카오 로그인 중 오류가 발생했습니다.");
-          sessionStorage.removeItem("pendingFingerprintAnalysis");
-          sessionStorage.removeItem("pendingFingerprintAnalysisFile");
-        }
-      };
-      reader.readAsDataURL(selectedFile);
-      return;
-    }
+    // 인증 없이 바로 분석 진행
 
     // 사용 횟수 확인
     if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {

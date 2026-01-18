@@ -17,10 +17,18 @@ export async function POST(request: NextRequest) {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
+    // FormData를 전송할 때는 Content-Type을 설정하지 않음 (브라우저가 자동으로 boundary 설정)
 
     // Python 백엔드 API 호출
     const pythonBackendUrl =
-      process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+      process.env.PYTHON_BACKEND_URL || 
+      process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 
+      "http://localhost:8000";
+
+    console.log(`[analyze-image] 백엔드 URL: ${pythonBackendUrl}`);
+    console.log(`[analyze-image] 파일명: ${file.name}, 크기: ${file.size} bytes`);
+    console.log(`[analyze-image] 감정: ${emotion || "없음"}`);
+    console.log(`[analyze-image] 토큰 존재: ${token ? "예" : "아니오"}`);
 
     const backendFormData = new FormData();
     backendFormData.append("file", file);
@@ -28,23 +36,91 @@ export async function POST(request: NextRequest) {
       backendFormData.append("emotion", emotion);
     }
 
-    const response = await fetch(`${pythonBackendUrl}/api/analyze-image`, {
-      method: "POST",
-      headers,
-      body: backendFormData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "백엔드 API 호출 실패");
+    let response: Response;
+    try {
+      response = await fetch(`${pythonBackendUrl}/api/analyze-image`, {
+        method: "POST",
+        headers,
+        body: backendFormData,
+      });
+    } catch (fetchError: any) {
+      console.error("[analyze-image] 백엔드 연결 실패:", {
+        error: fetchError,
+        message: fetchError?.message,
+        code: fetchError?.code,
+        stack: fetchError?.stack,
+        url: `${pythonBackendUrl}/api/analyze-image`,
+      });
+      return NextResponse.json(
+        { 
+          success: false,
+          error: `백엔드 서버에 연결할 수 없습니다: ${fetchError?.message || "연결 실패"}` 
+        },
+        { status: 500 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    console.log(`[analyze-image] 백엔드 응답 상태: ${response.status} ${response.statusText}`);
+
+    // 응답 데이터 파싱
+    let responseData: any;
+    try {
+      const responseText = await response.text();
+      console.log(`[analyze-image] 백엔드 응답 텍스트 (처음 500자):`, responseText.substring(0, 500));
+      
+      if (!responseText) {
+        throw new Error("백엔드 응답이 비어있습니다");
+      }
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(`[analyze-image] JSON 파싱 실패. 전체 응답:`, responseText);
+        throw new Error(`백엔드 응답 파싱 실패: ${response.status} ${response.statusText}. 응답: ${responseText.substring(0, 200)}`);
+      }
+    } catch (parseError: any) {
+      console.error(`[analyze-image] 응답 파싱 오류:`, parseError);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: parseError.message || "백엔드 응답을 파싱할 수 없습니다." 
+        },
+        { status: 500 }
+      );
+    }
+
+    // 백엔드가 200 OK로 에러를 반환하는 경우도 처리
+    if (!response.ok || (responseData.success === false)) {
+      const errorMessage = responseData.error || responseData.message || `백엔드 API 호출 실패 (${response.status})`;
+      console.error(`[analyze-image] 백엔드 에러:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        responseData,
+      });
+      return NextResponse.json(
+        { 
+          success: false,
+          error: errorMessage 
+        },
+        { status: response.ok ? 200 : response.status }
+      );
+    }
+
+    console.log(`[analyze-image] 분석 성공: report_id=${responseData.report_id}`);
+    return NextResponse.json(responseData);
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("[analyze-image] 예상치 못한 에러:", {
+      error,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
     return NextResponse.json(
-      { error: error.message || "서버 오류가 발생했습니다." },
+      { 
+        success: false,
+        error: error?.message || "서버 오류가 발생했습니다." 
+      },
       { status: 500 }
     );
   }

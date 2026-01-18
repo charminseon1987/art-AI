@@ -19,6 +19,7 @@ from services.class_work_service import ClassWorkService
 from services.fingerprint_service import FingerprintService
 from services.contact_service import ContactService
 from services.usage_limit_service import UsageLimitService
+from services.phone_auth_service import get_phone_auth_service
 from models.class_work import ClassWork
 from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
@@ -66,6 +67,14 @@ fingerprint_service = FingerprintService(llm, image_service)
 contact_service = ContactService()
 usage_limit_service = UsageLimitService()
 
+# PhoneAuthService 초기화 (에러 발생 시에도 서버가 시작되도록)
+try:
+    phone_auth_service = get_phone_auth_service()
+except Exception as e:
+    print(f"Warning: PhoneAuthService 초기화 실패: {e}")
+    print("NCP SENS 자격 증명이 설정되지 않았습니다. 전화 인증 기능은 사용할 수 없습니다.")
+    phone_auth_service = None
+
 # ReportGeneratorService 초기화 (에러 발생 시에도 서버가 시작되도록)
 try:
     report_generator_service = ReportGeneratorService(llm)
@@ -85,130 +94,152 @@ async def analyze_image(
     emotion: Optional[str] = Form(None),
     authorization: Optional[str] = Header(None)
 ):
-    """이미지 분석 API (카카오 인증 필수)"""
-    # 토큰 검증 (카카오 인증 필수)
+    """이미지 분석 API"""
+    # 토큰 검증 (선택적)
+    user_id = None
     try:
-        user_info = verify_supabase_token(authorization)
-        user_id = user_info.get("id")
-    except HTTPException as e:
-        # Supabase 인증 실패 시 에러 반환 (폴백 제거)
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
+        if authorization:
+            user_info = verify_supabase_token(authorization)
+            user_id = user_info.get("id")
     except Exception as e:
-        # 기타 오류 시 에러 반환
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
-    
-    if not user_id:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
+        # 인증 실패해도 계속 진행 (인증은 선택적)
+        print(f"인증 토큰 검증 실패 (계속 진행): {e}")
+        pass
     
     try:
-        # 카카오 사용자 ID 가져오기 (필수)
-        kakao_id = None
-        if user_id and usage_limit_service.supabase:
-            try:
-                usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
-                if usage_response.data and len(usage_response.data) > 0:
-                    kakao_id = usage_response.data[0].get("kakao_id")
-            except Exception as e:
-                print(f"카카오 ID 조회 오류: {e}")
+        print(f"[analyze-image] 요청 받음: 파일명={file.filename}, 크기={file.size if hasattr(file, 'size') else 'unknown'}, 감정={emotion}")
         
-        # 카카오 ID가 없으면 분석 불가
-        if not kakao_id:
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "success": False,
-                    "error": "카카오 인증이 필요합니다. 카카오로 로그인해주세요."
-                }
-            )
-        
-        # 카카오 ID로 사용 횟수 확인
-        if usage_limit_service.supabase:
-            try:
-                kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
-                if kakao_response.data and len(kakao_response.data) > 0:
-                    kakao_limit = kakao_response.data[0]
-                    count = kakao_limit.get("image_analysis_count", 0)
-                    if count >= usage_limit_service.MAX_IMAGE_ANALYSIS:
-                        return JSONResponse(
-                            status_code=200,
-                            content={
-                                "success": False,
-                                "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
-                            }
-                        )
-            except Exception as e:
-                print(f"카카오 ID 기반 사용 횟수 확인 오류: {e}")
-        
-        # user_id로도 사용 횟수 확인 (보조)
-        is_allowed, error_message = usage_limit_service.check_image_analysis_limit(user_id)
-        if not is_allowed:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "success": False,
-                    "error": error_message
-                }
-            )
+        # 사용 횟수 확인 (인증된 사용자인 경우만)
+        if user_id:
+            print(f"[analyze-image] 사용자 ID: {user_id}, 사용 횟수 확인 중...")
+            is_allowed, error_message = usage_limit_service.check_image_analysis_limit(user_id)
+            if not is_allowed:
+                print(f"[analyze-image] 사용 횟수 초과: {error_message}")
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "success": False,
+                        "error": error_message
+                    }
+                )
         
         # 파일 읽기
+        print("[analyze-image] 파일 읽기 시작...")
         contents = await file.read()
+        if not contents:
+            print("[analyze-image] 파일이 비어있음")
+            return JSONResponse(
+                status_code=400,
+                content={"error": "파일이 비어있습니다."}
+            )
+        
         file_obj = BytesIO(contents)
         file_obj.name = file.filename
+        print(f"[analyze-image] 파일 읽기 완료: {len(contents)} bytes")
         
         # 이미지 처리
+        print("[analyze-image] 이미지 처리 시작...")
         image_result = image_service.process_uploaded_image(file_obj)
         
         if not image_result.get("success"):
+            error_msg = image_result.get("error", "이미지 처리 실패")
+            print(f"[analyze-image] 이미지 처리 실패: {error_msg}")
             return JSONResponse(
                 status_code=400,
-                content={"error": image_result.get("error", "이미지 처리 실패")}
+                content={"error": f"이미지 처리 실패: {error_msg}"}
             )
         
+        print("[analyze-image] 이미지 처리 완료, AI 분석 시작...")
         # AI 분석
-        report_data = ai_service.analyze_image(
-            image_result["description"],
-            emotion
-        )
+        try:
+            report_data = ai_service.analyze_image(
+                image_result["description"],
+                emotion
+            )
+            print(f"[analyze-image] AI 분석 완료: report_id={report_data.id}")
+        except Exception as ai_error:
+            import traceback
+            ai_error_trace = traceback.format_exc()
+            print(f"[analyze-image] AI 분석 중 에러 발생:")
+            print(ai_error_trace)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": f"AI 분석 중 오류가 발생했습니다: {str(ai_error)}",
+                    "error_type": type(ai_error).__name__
+                }
+            )
         
         # 메타데이터 저장 (base64 이미지 포함)
         report_data.image_metadata = image_result["metadata"]
         report_data.image_metadata["base64"] = image_result.get("base64", "")
         
         # 리포트 저장
-        report_service.save_report(report_data)
+        print("[analyze-image] 리포트 저장 중...")
+        try:
+            report_service.save_report(report_data)
+            print("[analyze-image] 리포트 저장 완료")
+        except Exception as save_error:
+            import traceback
+            save_error_trace = traceback.format_exc()
+            print(f"[analyze-image] 리포트 저장 중 에러 발생:")
+            print(save_error_trace)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": f"리포트 저장 중 오류가 발생했습니다: {str(save_error)}",
+                    "error_type": type(save_error).__name__
+                }
+            )
         
         # 사용 횟수 증가 (인증된 사용자인 경우만)
         if user_id:
+            print(f"[analyze-image] 사용 횟수 증가: user_id={user_id}")
             usage_limit_service.increment_image_analysis_count(user_id)
         
         # 응답 데이터 구성
-        return {
-            "success": True,
-            "report_id": report_data.id,
-            "report": {
-                "id": report_data.id,
-                "observation": report_data.observation.model_dump(),
-                "emotional_language": report_data.emotional_language.model_dump(),
-                "reflection_questions": report_data.reflection_questions.model_dump(),
-                "professional_conclusion": report_data.professional_conclusion.model_dump(),
-                "user_emotion": report_data.user_emotion,
-                "created_at": report_data.created_at.isoformat(),
-            },
-            "chat_ready": True  # Chat 인터페이스 준비 완료
-        }
+        print("[analyze-image] 응답 생성 중...")
+        try:
+            response_data = {
+                "success": True,
+                "report_id": report_data.id,
+                "report": {
+                    "id": report_data.id,
+                    "observation": report_data.observation.model_dump(),
+                    "emotional_language": report_data.emotional_language.model_dump(),
+                    "reflection_questions": report_data.reflection_questions.model_dump(),
+                    "professional_conclusion": report_data.professional_conclusion.model_dump(),
+                    "user_emotion": report_data.user_emotion,
+                    "created_at": report_data.created_at.isoformat(),
+                },
+                "chat_ready": True  # Chat 인터페이스 준비 완료
+            }
+            print("[analyze-image] 응답 생성 완료, 반환 중...")
+            return response_data
+        except Exception as response_error:
+            import traceback
+            response_error_trace = traceback.format_exc()
+            print(f"[analyze-image] 응답 생성 중 에러 발생:")
+            print(response_error_trace)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": f"응답 생성 중 오류가 발생했습니다: {str(response_error)}",
+                    "error_type": type(response_error).__name__
+                }
+            )
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[analyze-image] 에러 발생:")
+        print(error_trace)
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content={
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "traceback": error_trace if os.getenv("DEBUG", "false").lower() == "true" else None
+            }
         )
 
 
@@ -763,79 +794,30 @@ async def analyze_fingerprint(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(None)
 ):
-    """엄지 지문 분석 API (카카오 인증 필수)"""
-    # 토큰 검증 (카카오 인증 필수)
+    """엄지 지문 분석 API"""
+    # 토큰 검증 (선택적)
+    user_id = None
     try:
-        user_info = verify_supabase_token(authorization)
-        user_id = user_info.get("id")
-    except HTTPException as e:
-        # Supabase 인증 실패 시 에러 반환 (폴백 제거)
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
+        if authorization:
+            user_info = verify_supabase_token(authorization)
+            user_id = user_info.get("id")
     except Exception as e:
-        # 기타 오류 시 에러 반환
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
-    
-    if not user_id:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "카카오 인증이 필요합니다."}
-        )
+        # 인증 실패해도 계속 진행 (인증은 선택적)
+        print(f"인증 토큰 검증 실패 (계속 진행): {e}")
+        pass
     
     try:
-        # 카카오 사용자 ID 가져오기 (필수)
-        kakao_id = None
-        if user_id and usage_limit_service.supabase:
-            try:
-                usage_response = usage_limit_service.supabase.table("user_usage_limits").select("kakao_id").eq("user_id", user_id).execute()
-                if usage_response.data and len(usage_response.data) > 0:
-                    kakao_id = usage_response.data[0].get("kakao_id")
-            except Exception as e:
-                print(f"카카오 ID 조회 오류: {e}")
-        
-        # 카카오 ID가 없으면 분석 불가
-        if not kakao_id:
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "success": False,
-                    "error": "카카오 인증이 필요합니다. 카카오로 로그인해주세요."
-                }
-            )
-        
-        # 카카오 ID로 사용 횟수 확인
-        if usage_limit_service.supabase:
-            try:
-                kakao_response = usage_limit_service.supabase.table("user_usage_limits").select("*").eq("kakao_id", kakao_id).execute()
-                if kakao_response.data and len(kakao_response.data) > 0:
-                    kakao_limit = kakao_response.data[0]
-                    count = kakao_limit.get("fingerprint_analysis_count", 0)
-                    if count >= usage_limit_service.MAX_FINGERPRINT_ANALYSIS:
-                        return JSONResponse(
-                            status_code=200,
-                            content={
-                                "success": False,
-                                "error": "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
-                            }
-                        )
-            except Exception as e:
-                print(f"카카오 ID 기반 사용 횟수 확인 오류: {e}")
-        
-        # user_id로도 사용 횟수 확인 (보조)
-        is_allowed, error_message = usage_limit_service.check_fingerprint_analysis_limit(user_id)
-        if not is_allowed:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "success": False,
-                    "error": error_message
-                }
-            )
+        # 사용 횟수 확인 (인증된 사용자인 경우만)
+        if user_id:
+            is_allowed, error_message = usage_limit_service.check_fingerprint_analysis_limit(user_id)
+            if not is_allowed:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "success": False,
+                        "error": error_message
+                    }
+                )
         
         # 파일 읽기
         contents = await file.read()
@@ -931,50 +913,56 @@ async def generate_pdf_report(
     report_id: str,
     authorization: Optional[str] = Header(None)
 ):
-    """미술 심리 전문가 리포트 PDF 생성 (인증 필요)"""
-    # 토큰 검증
+    """미술 심리 전문가 리포트 PDF 생성 (인증 선택적)"""
+    print(f"[PDF 다운로드] 요청 받음: report_id={report_id}, authorization 존재={bool(authorization)}")
+    
+    # 토큰 검증 (선택적) - authorization이 None이거나 빈 문자열이면 인증 없이 진행
     user_info = None
-    try:
-        user_info = verify_supabase_token(authorization)
-    except HTTPException as e:
-        # Supabase 인증 실패 시 기존 방식으로 폴백 (하위 호환성)
-        if e.status_code == 503:  # Supabase가 설정되지 않은 경우
-            try:
-                verify_admin_token(authorization)
-                # 기존 방식에서는 user_info를 None으로 유지
-            except:
-                return JSONResponse(
-                    status_code=401,
-                    content={"error": "인증이 필요합니다."}
-                )
-        else:
-            return JSONResponse(
-                status_code=e.status_code,
-                content={"error": e.detail}
-            )
-    except Exception as e:
-        # 기타 오류 시 기존 방식으로 폴백
+    if authorization and authorization.strip() and authorization.strip().startswith("Bearer "):
+        print(f"[PDF 다운로드] 인증 토큰 검증 시도...")
         try:
-            verify_admin_token(authorization)
-            # 기존 방식에서는 user_info를 None으로 유지
-        except:
-            return JSONResponse(
-                status_code=401,
-                content={"error": "인증이 필요합니다."}
-            )
+            # verify_supabase_token을 직접 호출하지 않고, 내부 로직을 사용
+            from utils.supabase_auth import supabase
+            if supabase:
+                token = authorization.replace("Bearer ", "").strip()
+                try:
+                    user_response = supabase.auth.get_user(token)
+                    if user_response.user:
+                        profile_response = supabase.table("profiles").select("*").eq("id", user_response.user.id).execute()
+                        profile = profile_response.data[0] if profile_response.data else None
+                        user_info = {
+                            "id": user_response.user.id,
+                            "email": user_response.user.email,
+                            "role": profile.get("role", "user") if profile else "user",
+                            "name": profile.get("name", "") if profile else "",
+                        }
+                        print(f"[PDF 다운로드] 인증 성공: user_id={user_info.get('id')}")
+                    else:
+                        print(f"[PDF 다운로드] 유효하지 않은 토큰, 계속 진행")
+                except Exception as token_error:
+                    print(f"[PDF 다운로드] 토큰 검증 실패 (계속 진행): {token_error}")
+            else:
+                print(f"[PDF 다운로드] Supabase가 설정되지 않음, 계속 진행")
+        except Exception as e:
+            print(f"[PDF 다운로드] 인증 처리 중 오류 (계속 진행): {e}")
+    else:
+        print(f"[PDF 다운로드] 인증 토큰 없음 또는 형식 오류 - 인증 없이 진행")
     
     try:
         from fastapi.responses import Response
         
         # 리포트 로드
+        print(f"[PDF 다운로드] 리포트 로드 시작: report_id={report_id}")
         report_data = report_service.load_report(report_id)
         if not report_data:
+            print(f"[PDF 다운로드] 리포트를 찾을 수 없음: report_id={report_id}")
             return JSONResponse(
                 status_code=404,
                 content={"error": "리포트를 찾을 수 없습니다."}
             )
+        print(f"[PDF 다운로드] 리포트 로드 완료")
         
-        # 사용자 권한 확인 (리포트 소유자 또는 관리자/슈퍼바이저만 접근 가능)
+        # 사용자 권한 확인 (인증된 경우에만 권한 체크)
         if user_info:
             user_id = user_info.get("id")
             user_role = user_info.get("role", "user")
@@ -1332,6 +1320,293 @@ async def update_contact_status(
         return JSONResponse(
             status_code=500,
             content={"error": f"문의 상태 업데이트 실패: {str(e)}"}
+        )
+
+
+# ====================== PHONE AUTHENTICATION ENDPOINTS ======================
+
+@app.post("/api/auth/phone/request-code")
+async def request_phone_verification_code(phone_number: str = Form(...)):
+    """
+    Request SMS verification code
+
+    Args:
+        phone_number: Phone number in format 010-xxxx-xxxx
+
+    Returns:
+        Success status and message
+    """
+    if not phone_auth_service:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "success": False,
+                "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+            }
+        )
+    
+    try:
+        result = phone_auth_service.send_verification_code(phone_number)
+
+        if result["success"]:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "message": result["message"]
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": result["message"]
+                }
+            )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"인증번호 요청 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"인증번호 요청 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/auth/phone/verify-code")
+async def verify_phone_code(
+    phone_number: str = Form(...),
+    code: str = Form(...)
+):
+    """
+    Verify SMS code and create user session
+
+    Args:
+        phone_number: Phone number
+        code: 6-digit verification code
+
+    Returns:
+        Session token and user information
+    """
+    try:
+        if not phone_auth_service:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+                }
+            )
+        
+        # Verify the code
+        verify_result = phone_auth_service.verify_code(phone_number, code)
+
+        if not verify_result["success"]:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": verify_result["message"]
+                }
+            )
+
+        # Find or create user
+        if not phone_auth_service:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+                }
+            )
+        
+        user_result = phone_auth_service.find_or_create_user(phone_number)
+
+        if not user_result["success"]:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": user_result["message"]
+                }
+            )
+
+        user = user_result["user"]
+
+        # Create session
+        if not phone_auth_service:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+                }
+            )
+        
+        session_result = phone_auth_service.create_session(
+            user_id=user["id"],
+            phone_number=phone_number,
+            expiry_hours=24
+        )
+
+        if not session_result["success"]:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": session_result["message"]
+                }
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": "인증되었습니다.",
+                "session_token": session_result["session_token"],
+                "expires_at": session_result["expires_at"],
+                "user": {
+                    "id": user["id"],
+                    "phone_number": user["phone_number"],
+                    "role": user.get("role", "user"),
+                    "name": user.get("name", "")
+                },
+                "is_new_user": user_result["is_new_user"]
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"인증 확인 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"인증 확인 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/auth/phone/logout")
+async def phone_logout(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Logout and delete session
+
+    Args:
+        authorization: Bearer token with session_token
+
+    Returns:
+        Success status
+    """
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증 토큰이 필요합니다."}
+            )
+
+        session_token = authorization.replace("Bearer ", "").strip()
+
+        if not phone_auth_service:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+                }
+            )
+
+        result = phone_auth_service.logout(session_token)
+
+        if result["success"]:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "message": result["message"]
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": result["message"]
+                }
+            )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"로그아웃 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"로그아웃 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/auth/phone/verify-session")
+async def verify_phone_session(
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Verify session token and get user info
+
+    Args:
+        authorization: Bearer token with session_token
+
+    Returns:
+        User information if session is valid
+    """
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"error": "인증 토큰이 필요합니다."}
+            )
+
+        session_token = authorization.replace("Bearer ", "").strip()
+
+        if not phone_auth_service:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "success": False,
+                    "error": "전화 인증 서비스가 사용할 수 없습니다. NCP SENS 자격 증명이 설정되지 않았습니다."
+                }
+            )
+
+        result = phone_auth_service.verify_session(session_token)
+
+        if result["success"]:
+            user = result["user"]
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "user": {
+                        "id": user["id"],
+                        "phone_number": user.get("phone_number"),
+                        "role": user.get("role", "user"),
+                        "name": user.get("name", ""),
+                        "email": user.get("email", "")
+                    }
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "success": False,
+                    "error": result["message"]
+                }
+            )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"세션 확인 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"세션 확인 실패: {str(e)}"}
         )
 
 

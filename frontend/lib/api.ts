@@ -29,6 +29,12 @@ export async function analyzeImage(
   }
 
   try {
+    console.log("[analyzeImage] 분석 시작:", {
+      fileName: file.name,
+      fileSize: file.size,
+      emotion: emotion || "없음",
+    });
+
     const response = await axios.post<AnalyzeImageResponse>(
       `/api/analyze-image`,
       formData,
@@ -36,22 +42,76 @@ export async function analyzeImage(
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        timeout: 120000, // 2분 타임아웃 (이미지 분석은 시간이 걸릴 수 있음)
       }
     );
 
+    console.log("[analyzeImage] 분석 완료:", {
+      success: response.data.success,
+      reportId: response.data.report_id,
+    });
+
+    // 응답에서 success가 false인 경우도 에러로 처리
+    if (response.data.success === false) {
+      const errorMessage = (response.data as any).error || "분석에 실패했습니다.";
+      throw new Error(errorMessage);
+    }
+
     return response.data;
   } catch (error: any) {
-    console.error("API Error:", error);
+    // 에러 객체 전체를 로깅 (디버깅용)
+    console.error("[analyzeImage] API Error (전체):", error);
+    console.error("[analyzeImage] API Error (상세):", {
+      message: error?.message,
+      name: error?.name,
+      stack: error?.stack,
+      response: error?.response?.data,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      request: error?.request,
+      code: error?.code,
+    });
+
+    // axios 에러인 경우
     if (error.response) {
-      throw new Error(
-        error.response.data?.error || "서버 오류가 발생했습니다."
-      );
+      // 서버가 응답을 반환했지만 에러 상태인 경우
+      const errorData = error.response.data;
+      let errorMessage = "";
+      
+      if (typeof errorData === 'object') {
+        errorMessage = errorData?.error || errorData?.message || `서버 오류가 발생했습니다. (${error.response.status})`;
+        // 백엔드에서 전달한 상세 에러 정보가 있으면 포함
+        if (errorData?.error_type) {
+          errorMessage += ` [${errorData.error_type}]`;
+        }
+      } else if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else {
+        errorMessage = `서버 오류가 발생했습니다. (${error.response.status})`;
+      }
+      
+      // 500 에러인 경우 더 자세한 정보 제공
+      if (error.response.status === 500) {
+        console.error("[analyzeImage] 백엔드 500 에러 상세:", errorData);
+        if (errorData?.traceback && process.env.NODE_ENV === 'development') {
+          console.error("[analyzeImage] 백엔드 트레이스백:", errorData.traceback);
+        }
+      }
+      
+      throw new Error(errorMessage);
     } else if (error.request) {
+      // 요청은 보냈지만 응답을 받지 못한 경우
+      console.error("[analyzeImage] 백엔드 연결 실패 - 요청은 보냈지만 응답 없음");
       throw new Error(
         "서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요."
       );
+    } else if (error.message) {
+      // 기타 에러 (타임아웃 등)
+      throw new Error(error.message);
     } else {
-      throw new Error(error.message || "알 수 없는 오류가 발생했습니다.");
+      // 알 수 없는 에러
+      const errorString = String(error);
+      throw new Error(errorString !== '[object Object]' ? errorString : "알 수 없는 오류가 발생했습니다.");
     }
   }
 }
@@ -152,14 +212,43 @@ export async function conductCounseling(reportId: string, responses: any[]) {
 }
 
 export async function downloadReportPDF(reportId: string): Promise<void> {
-  const pythonBackendUrl =
-    process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
-  const url = `${pythonBackendUrl}/api/reports/${reportId}/pdf`;
-
   try {
-    const response = await fetch(url);
+    // Next.js API Route를 통해 호출 (인증 토큰은 선택적)
+    const token = await getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    // PDF 다운로드는 Content-Type을 설정하지 않음
+
+    console.log(`[downloadReportPDF] PDF 다운로드 시작: reportId=${reportId}, 토큰 존재=${!!token}`);
+
+    const response = await fetch(`/api/reports/${reportId}/pdf`, {
+      method: "GET",
+      headers,
+    });
+
+    console.log(`[downloadReportPDF] 응답 상태: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      throw new Error("PDF 다운로드 실패");
+      // 에러 응답이 JSON일 수도 있고 텍스트일 수도 있음
+      let errorMessage = `PDF 다운로드 실패 (${response.status})`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // JSON이 아닌 경우 텍스트로 읽기 시도
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch {
+          // 읽기 실패 시 기본 메시지 사용
+        }
+      }
+      console.error(`[downloadReportPDF] 에러: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
 
     const blob = await response.blob();
