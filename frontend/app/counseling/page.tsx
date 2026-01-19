@@ -13,19 +13,33 @@ import {
   MessageCircle,
   MailOpen,
   PhoneCall,
+  Loader2,
+  Calendar,
+  Clock,
+  User,
+  Phone,
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import ChatInterface from "@/components/ChatInterface";
 import ReportDisplay from "@/components/ReportDisplay";
-import { generateChatReport, downloadReportPDF } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { generateChatReport, downloadReportPDF, createReservation, type CreateReservationRequest } from "@/lib/api";
 
 export default function CounselingPage() {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [reportData, setReportData] = useState<any>(null);
   const [chatResponses, setChatResponses] = useState<any[]>([]);
   const [simpleReport, setSimpleReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  
+  // 예약 관련 상태
+  const [reservationDate, setReservationDate] = useState<string>("");
+  const [reservationTime, setReservationTime] = useState<string>("");
+  const [childName, setChildName] = useState<string>("");
+  const [childAge, setChildAge] = useState<string>("");
+  const [parentPhone, setParentPhone] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [creatingReservation, setCreatingReservation] = useState(false);
+  const [reservationResult, setReservationResult] = useState<any>(null);
 
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
@@ -584,8 +598,323 @@ export default function CounselingPage() {
           </div>
         )}
 
-        {/* STEP 4: 상담 연결 CTA */}
+        {/* STEP 4: 상담 예약 */}
         {step === 4 && (
+          <div className="bg-white p-8 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-lg">
+                4
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  <Calendar className="w-6 h-6 text-green-500" />
+                  상담 예약하기
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  날짜와 시간을 선택하고 예약 정보를 입력해주세요
+                </p>
+              </div>
+            </div>
+
+            {/* 예약금 안내 */}
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-xl">💰</span> 예약금 안내
+              </h3>
+              <div className="space-y-2 text-gray-700 text-sm">
+                <p className="flex items-start gap-2">
+                  <span className="font-semibold">• 예약금:</span>
+                  <span>10,000원 (입금 확인 후 예약 확정)</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="font-semibold">• 입금 기한:</span>
+                  <span>예약 접수 후 5시간 이내</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="font-semibold">• 입금 확인:</span>
+                  <span>관리자가 입금을 확인하면 예약이 확정됩니다</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="font-semibold">• 입금 계좌:</span>
+                  <span>예약 완료 후 다음 페이지에서 확인 가능합니다</span>
+                </p>
+                <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
+                  <p className="text-yellow-800 text-xs">
+                    ⚠️ 입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* 날짜 선택 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  예약 날짜
+                </label>
+                <input
+                  type="date"
+                  value={reservationDate}
+                  onChange={(e) => setReservationDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 bg-white"
+                  required
+                />
+              </div>
+
+              {/* 시간 선택 */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  예약 시간
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setReservationTime(time)}
+                      className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                        reservationTime === time
+                          ? "border-green-500 bg-green-50 text-green-700 font-semibold"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 예약 정보 입력 */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    아이 이름
+                  </label>
+                  <input
+                    type="text"
+                    value={childName}
+                    onChange={(e) => setChildName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 bg-white"
+                    placeholder="아이 이름을 입력하세요"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    아이 연령
+                  </label>
+                  <input
+                    type="text"
+                    value={childAge}
+                    onChange={(e) => setChildAge(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 bg-white"
+                    placeholder="예: 7세"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  부모 전화번호
+                </label>
+                <input
+                  type="tel"
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 bg-white"
+                  placeholder="010-1234-5678"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  메모 (선택사항)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 bg-white"
+                  rows={4}
+                  placeholder="특별히 전달하고 싶은 내용이 있으시면 입력해주세요"
+                />
+              </div>
+
+              {/* 예약 버튼 */}
+              <div className="flex gap-4">
+                <button
+                  onClick={async () => {
+                    if (!reservationDate || !reservationTime || !childName || !childAge || !parentPhone) {
+                      alert("필수 정보를 모두 입력해주세요.");
+                      return;
+                    }
+
+                    setCreatingReservation(true);
+                    try {
+                      const reservationData: CreateReservationRequest = {
+                        reservation_date: reservationDate,
+                        reservation_time: reservationTime + ":00",
+                        child_name: childName,
+                        child_age: childAge,
+                        parent_phone: parentPhone,
+                        notes: notes || undefined,
+                      };
+
+                      const result = await createReservation(reservationData);
+                      setReservationResult(result);
+                      setStep(5);
+                    } catch (error: any) {
+                      alert(error.message || "예약 생성 중 오류가 발생했습니다.");
+                    } finally {
+                      setCreatingReservation(false);
+                    }
+                  }}
+                  disabled={creatingReservation}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  {creatingReservation ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      예약 생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-5 h-5" />
+                      예약하기
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 5: 예약금 입금 안내 */}
+        {step === 5 && reservationResult && (
+          <div className="bg-white p-8 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-lg">
+                ✓
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  예약이 접수되었습니다
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  예약금 입금 안내를 확인해주세요
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">예약 정보</h3>
+              <div className="space-y-2 text-gray-700">
+                <p><span className="font-semibold">예약 번호:</span> {reservationResult.reservation.id.substring(0, 8)}</p>
+                <p><span className="font-semibold">예약 날짜:</span> {new Date(reservationResult.reservation.reservation_date).toLocaleDateString("ko-KR")}</p>
+                <p><span className="font-semibold">예약 시간:</span> {reservationResult.reservation.reservation_time.substring(0, 5)}</p>
+                <p><span className="font-semibold">아이 이름:</span> {reservationResult.reservation.child_name}</p>
+                <p><span className="font-semibold">상태:</span> 입금 대기 중</p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg mb-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-xl">💰</span> 예약금 입금 안내
+              </h3>
+              <div className="space-y-4">
+                <div className="bg-white p-5 rounded-lg border-2 border-blue-200">
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 계좌</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">
+                    {reservationResult.deposit_info.bank_name}
+                  </p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {reservationResult.deposit_info.account_number}
+                  </p>
+                </div>
+                <div className="bg-white p-5 rounded-lg border-2 border-green-200">
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 금액</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {reservationResult.deposit_info.amount.toLocaleString()}원
+                  </p>
+                </div>
+                <div className="bg-white p-5 rounded-lg border-2 border-red-200">
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 기한</p>
+                  <p className="text-xl font-bold text-red-600">
+                    {new Date(reservationResult.deposit_info.deadline).toLocaleString("ko-KR")}까지
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    (예약 접수 후 5시간 이내)
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-800 font-semibold mb-2">
+                  ⚠️ 중요 안내
+                </p>
+                <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
+                  <li>입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수 있습니다.</li>
+                  <li>입금 시 예약 번호를 메모란에 기재해주시면 확인이 더 빠릅니다.</li>
+                  <li>입금 확인은 관리자가 수동으로 진행하며, 확인까지 시간이 걸릴 수 있습니다.</li>
+                  <li>입금 확인 완료 후 예약이 확정되면 상태가 변경됩니다.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border-l-4 border-gray-400 p-6 rounded-lg mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-gray-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-gray-800">
+                  <p className="font-bold mb-2 text-base flex items-center gap-2">
+                    <span>ℹ️</span> 안내사항
+                  </p>
+                  <p className="leading-relaxed">
+                    입금 확인은 관리자가 수동으로 진행합니다. 입금 완료 후 예약이 확정됩니다.
+                    입금 확인까지 시간이 걸릴 수 있으니 양해 부탁드립니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  // 상태 초기화
+                  setReservationDate("");
+                  setReservationTime("");
+                  setChildName("");
+                  setChildAge("");
+                  setParentPhone("");
+                  setNotes("");
+                  setReservationResult(null);
+                  setStep(4);
+                }}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-8 py-4 rounded-lg font-semibold transition-all"
+              >
+                다시 예약하기
+              </button>
+              <button
+                onClick={() => {
+                  // 홈으로 이동 또는 리포트 보기
+                  window.location.href = "/";
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                홈으로 가기
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4 (기존): 상담 연결 CTA - 이제 사용하지 않음 */}
+        {false && step === 4 && (
           <div className="bg-white p-8 rounded-lg shadow-lg">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-lg">

@@ -6,7 +6,7 @@ import Navigation from "@/components/Navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "대전 초등 저학년 개인 미술수업",
+  title: "Analyist Art | AI ",
   description: "그림으로 아이 마음을 천천히 이해합니다",
 };
 

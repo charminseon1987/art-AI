@@ -414,3 +414,160 @@ export async function updateContactStatus(
     );
   }
 }
+
+export interface Reservation {
+  id: string;
+  user_id: string;
+  reservation_date: string;
+  reservation_time: string;
+  duration_minutes: number;
+  status: string;
+  deposit_amount: number;
+  deposit_confirmation_deadline: string;
+  balance_amount: number;
+  child_name: string;
+  child_age: string;
+  parent_phone: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReservationRequest {
+  reservation_date: string;
+  reservation_time: string;
+  child_name: string;
+  child_age: string;
+  parent_phone: string;
+  notes?: string;
+}
+
+export async function createReservation(
+  data: CreateReservationRequest
+): Promise<{
+  success: boolean;
+  reservation: Reservation;
+  deposit_info: {
+    bank_name: string;
+    account_number: string;
+    amount: number;
+    deadline: string;
+  };
+}> {
+  try {
+    const formData = new FormData();
+    formData.append("reservation_date", data.reservation_date);
+    formData.append("reservation_time", data.reservation_time);
+    formData.append("child_name", data.child_name);
+    formData.append("child_age", data.child_age);
+    formData.append("parent_phone", data.parent_phone);
+    if (data.notes) {
+      formData.append("notes", data.notes);
+    }
+
+    // 인증 토큰 가져오기 (선택적 - 없어도 예약 가능)
+    let token: string | null = null;
+    try {
+      token = await getAuthToken();
+    } catch (error) {
+      // 토큰이 없어도 예약 가능하도록 에러 무시
+      console.log("인증 토큰이 없습니다. 익명 예약으로 진행합니다.");
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "multipart/form-data",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await axios.post(`/api/reservations`, formData, {
+      headers,
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("예약 생성 오류:", error);
+    const errorMessage = error.response?.data?.error || error.message || "예약 생성 중 오류가 발생했습니다.";
+    throw new Error(errorMessage);
+  }
+}
+
+export async function getReservations(): Promise<{
+  success: boolean;
+  reservations: Reservation[];
+}> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.get(`/api/reservations`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("예약 목록 조회 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "예약 목록을 가져올 수 없습니다."
+    );
+  }
+}
+
+export async function getReservation(
+  reservationId: string
+): Promise<{ success: boolean; reservation: Reservation }> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.get(`/api/reservations/${reservationId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error("예약 조회 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "예약을 가져올 수 없습니다."
+    );
+  }
+}
+
+export async function confirmDeposit(
+  reservationId: string
+): Promise<{ success: boolean; reservation: Reservation; message: string }> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.patch(
+      `/api/reservations/${reservationId}/confirm-deposit`,
+      {},
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("입금 확인 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "입금 확인 중 오류가 발생했습니다."
+    );
+  }
+}
+
+export async function getPageContent(
+  path: string,
+  language: string = "ko"
+): Promise<{
+  success: boolean;
+  contents?: Record<string, string>;
+}> {
+  try {
+    // CMS API 엔드포인트가 있다면 여기서 호출
+    // 현재는 빈 객체를 반환하여 기본값 사용
+    return {
+      success: true,
+      contents: {},
+    };
+  } catch (error: any) {
+    console.error("CMS 콘텐츠 로드 오류:", error);
+    return {
+      success: false,
+      contents: {},
+    };
+  }
+}

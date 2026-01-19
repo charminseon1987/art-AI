@@ -20,6 +20,7 @@ from services.fingerprint_service import FingerprintService
 from services.contact_service import ContactService
 from services.usage_limit_service import UsageLimitService
 from services.phone_auth_service import get_phone_auth_service
+from services.reservation_service import get_reservation_service
 from models.class_work import ClassWork
 from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
@@ -81,6 +82,13 @@ try:
 except Exception as e:
     print(f"Warning: ReportGeneratorService 초기화 실패: {e}")
     report_generator_service = None
+
+# ReservationService 초기화
+try:
+    reservation_service = get_reservation_service()
+except Exception as e:
+    print(f"Warning: ReservationService 초기화 실패: {e}")
+    reservation_service = None
 
 
 @app.get("/")
@@ -1607,6 +1615,398 @@ async def verify_phone_session(
         return JSONResponse(
             status_code=500,
             content={"error": f"세션 확인 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/reservations")
+async def create_reservation(
+    reservation_date: str = Form(...),
+    reservation_time: str = Form(...),
+    child_name: str = Form(...),
+    child_age: str = Form(...),
+    parent_phone: str = Form(...),
+    notes: Optional[str] = Form(None),
+    authorization: Optional[str] = Header(None)
+):
+    """예약 생성 API"""
+    try:
+        if not reservation_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "예약 서비스가 사용할 수 없습니다."}
+            )
+        
+        # 토큰 검증
+        user_info = None
+        try:
+            user_info = verify_supabase_token(authorization)
+        except HTTPException as e:
+            if e.status_code == 503:
+                # Supabase가 설정되지 않은 경우, 기존 방식으로 폴백
+                try:
+                    verify_admin_token(authorization)
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        
+        # 인증이 없으면 전화번호로 사용자 찾기 또는 생성
+        user_id = None
+        if not user_info:
+            # 전화번호로 기존 사용자 찾기
+            try:
+                if reservation_service and reservation_service.supabase:
+                    # 전화번호로 사용자 찾기
+                    user_result = reservation_service.supabase.table("profiles").select("id").eq(
+                        "phone_number", parent_phone
+                    ).execute()
+                    
+                    if user_result.data and len(user_result.data) > 0:
+                        user_id = user_result.data[0]["id"]
+                    else:
+                        # 새 사용자 생성 (전화번호 기반)
+                        import uuid
+                        from datetime import datetime
+                        user_id = str(uuid.uuid4())
+                        new_user = {
+                            "id": user_id,
+                            "phone_number": parent_phone,
+                            "phone_verified_at": datetime.now().isoformat(),
+                            "auth_provider": "phone",
+                            "role": "user",
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat()
+                        }
+                        reservation_service.supabase.table("profiles").insert(new_user).execute()
+                        
+                        # 사용 횟수 제한 레코드도 생성
+                        reservation_service.supabase.table("user_usage_limits").insert({
+                            "user_id": user_id,
+                            "image_analysis_count": 0,
+                            "fingerprint_analysis_count": 0,
+                            "image_analysis_paid_count": 0,
+                            "created_at": datetime.now().isoformat(),
+                            "updated_at": datetime.now().isoformat()
+                        }).execute()
+                else:
+                    return JSONResponse(
+                        status_code=503,
+                        content={"error": "예약 서비스가 사용할 수 없습니다."}
+                    )
+            except Exception as e:
+                import traceback
+                print(f"사용자 생성/조회 오류: {traceback.format_exc()}")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": f"사용자 처리 실패: {str(e)}"}
+                )
+        else:
+            user_id = user_info.get("id")
+        
+        if not user_id:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "사용자 ID를 가져올 수 없습니다."}
+            )
+        
+        # 예약 생성
+        result = reservation_service.create_reservation(
+            user_id=user_id,
+            reservation_date=reservation_date,
+            reservation_time=reservation_time,
+            child_name=child_name,
+            child_age=child_age,
+            parent_phone=parent_phone,
+            notes=notes
+        )
+        
+        if result["success"]:
+            reservation = result["reservation"]
+            
+            # 입금 안내 정보 생성
+            deposit_bank_account = os.getenv("DEPOSIT_BANK_ACCOUNT", "123-456-789012")
+            deposit_bank_name = os.getenv("DEPOSIT_BANK_NAME", "국민은행")
+            deposit_amount = reservation.get("deposit_amount", 10000)
+            deposit_deadline = reservation.get("deposit_confirmation_deadline")
+            
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "reservation": reservation,
+                    "deposit_info": {
+                        "bank_name": deposit_bank_name,
+                        "account_number": deposit_bank_account,
+                        "amount": deposit_amount,
+                        "deadline": deposit_deadline
+                    }
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "예약 생성에 실패했습니다."}
+            )
+            
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"예약 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"예약 생성 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/reservations")
+async def get_reservations(
+    authorization: Optional[str] = Header(None)
+):
+    """예약 목록 조회 API"""
+    try:
+        if not reservation_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "예약 서비스가 사용할 수 없습니다."}
+            )
+        
+        # 토큰 검증
+        user_info = None
+        is_admin = False
+        try:
+            user_info = verify_supabase_token(authorization)
+            if user_info:
+                user_role = user_info.get("role", "user")
+                is_admin = user_role in ["admin", "supervisor"]
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    is_admin = True
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                is_admin = True
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        
+        user_id = user_info.get("id") if user_info else None
+        
+        # 예약 목록 조회
+        reservations = reservation_service.get_reservations(
+            user_id=user_id,
+            admin=is_admin
+        )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "reservations": reservations
+            }
+        )
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"예약 목록 조회 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"예약 목록 조회 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/reservations/{reservation_id}")
+async def get_reservation(
+    reservation_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """예약 상세 조회 API"""
+    try:
+        if not reservation_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "예약 서비스가 사용할 수 없습니다."}
+            )
+        
+        # 토큰 검증
+        user_info = None
+        is_admin = False
+        try:
+            user_info = verify_supabase_token(authorization)
+            if user_info:
+                user_role = user_info.get("role", "user")
+                is_admin = user_role in ["admin", "supervisor"]
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    is_admin = True
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                is_admin = True
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        
+        user_id = user_info.get("id") if user_info else None
+        
+        # 예약 조회
+        reservation = reservation_service.get_reservation(
+            reservation_id=reservation_id,
+            user_id=user_id,
+            admin=is_admin
+        )
+        
+        if not reservation:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "예약을 찾을 수 없습니다."}
+            )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "reservation": reservation
+            }
+        )
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"예약 조회 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"예약 조회 실패: {str(e)}"}
+        )
+
+
+@app.patch("/api/reservations/{reservation_id}/confirm-deposit")
+async def confirm_deposit(
+    reservation_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """예약금 입금 확인 API (관리자용)"""
+    try:
+        if not reservation_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "예약 서비스가 사용할 수 없습니다."}
+            )
+        
+        # 관리자 권한 확인
+        user_info = None
+        is_admin = False
+        try:
+            user_info = verify_supabase_token(authorization)
+            if user_info:
+                user_role = user_info.get("role", "user")
+                is_admin = user_role in ["admin", "supervisor"]
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    is_admin = True
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                is_admin = True
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+        
+        if not is_admin:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 권한이 필요합니다."}
+            )
+        
+        admin_user_id = user_info.get("id") if user_info else None
+        if not admin_user_id:
+            # 기존 방식에서는 임시 ID 사용
+            admin_user_id = "admin"
+        
+        # 입금 확인
+        result = reservation_service.confirm_deposit(
+            reservation_id=reservation_id,
+            admin_user_id=admin_user_id
+        )
+        
+        if result["success"]:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "success": True,
+                    "reservation": result["reservation"],
+                    "message": "입금 확인이 완료되었습니다."
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "입금 확인에 실패했습니다."}
+            )
+            
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"입금 확인 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"입금 확인 실패: {str(e)}"}
         )
 
 

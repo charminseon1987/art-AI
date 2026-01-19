@@ -19,6 +19,9 @@ import {
   getContacts,
   updateContactStatus,
   ContactInquiry,
+  getReservations,
+  confirmDeposit,
+  type Reservation,
 } from "@/lib/api";
 import { getCurrentUser, isAdminOrSupervisor } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -57,16 +60,19 @@ const getStatusColor = (status: string): string => {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"reports" | "contacts">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "contacts" | "reservations">("reports");
   const [reports, setReports] = useState<Report[]>([]);
   const [contacts, setContacts] = useState<ContactInquiry[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<ContactInquiry | null>(
     null
   );
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [contactSearchTerm, setContactSearchTerm] = useState("");
+  const [reservationSearchTerm, setReservationSearchTerm] = useState("");
   const [counselorAnswers, setCounselorAnswers] = useState<
     Record<number, string>
   >({});
@@ -109,6 +115,7 @@ export default function AdminPage() {
         setAuthenticated(true);
         loadReports();
         loadContacts();
+        loadReservations();
       } catch (error) {
         console.error("인증 확인 오류:", error);
         router.push("/admin/login");
@@ -145,6 +152,44 @@ export default function AdminPage() {
     } catch (error: any) {
       console.error("문의 목록 로드 오류:", error);
       alert("문의 목록을 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadReservations = async () => {
+    try {
+      setLoading(true);
+      const data = await getReservations();
+      if (data.success) {
+        setReservations(data.reservations || []);
+      }
+    } catch (error: any) {
+      console.error("예약 목록 로드 오류:", error);
+      alert("예약 목록을 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDeposit = async (reservationId: string) => {
+    if (!confirm("입금 확인을 완료하시겠습니까?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await confirmDeposit(reservationId);
+      
+      if (result.success) {
+        alert("입금 확인이 완료되었습니다.");
+        await loadReservations();
+        if (selectedReservation?.id === reservationId) {
+          setSelectedReservation(result.reservation);
+        }
+      }
+    } catch (error: any) {
+      alert("입금 확인 실패: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -203,6 +248,41 @@ export default function AdminPage() {
       contact.status.toLowerCase().includes(searchLower)
     );
   });
+
+  const filteredReservations = reservations.filter((reservation) => {
+    if (!reservationSearchTerm) return true;
+    const searchLower = reservationSearchTerm.toLowerCase();
+    return (
+      reservation.child_name.toLowerCase().includes(searchLower) ||
+      reservation.parent_phone.toLowerCase().includes(searchLower) ||
+      reservation.reservation_date.toLowerCase().includes(searchLower) ||
+      reservation.status.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const getReservationStatusLabel = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      pending_deposit: "입금 대기",
+      deposit_paid: "입금 완료",
+      deposit_confirmed: "예약 확정",
+      in_progress: "진행 중",
+      completed: "완료",
+      cancelled: "취소",
+    };
+    return statusMap[status] || status;
+  };
+
+  const getReservationStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      pending_deposit: "bg-yellow-100 text-yellow-800",
+      deposit_paid: "bg-blue-100 text-blue-800",
+      deposit_confirmed: "bg-green-100 text-green-800",
+      in_progress: "bg-purple-100 text-purple-800",
+      completed: "bg-gray-100 text-gray-800",
+      cancelled: "bg-red-100 text-red-800",
+    };
+    return colorMap[status] || "bg-gray-100 text-gray-800";
+  };
 
   const handleContactStatusChange = async (
     contactId: string,
@@ -315,6 +395,19 @@ export default function AdminPage() {
               }`}
             >
               문의
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("reservations");
+                setSelectedReservation(null);
+              }}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                activeTab === "reservations"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              예약
             </button>
           </div>
 
@@ -1315,6 +1408,228 @@ export default function AdminPage() {
                 <div className="bg-white rounded-lg shadow-md p-12 text-center">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">왼쪽에서 문의를 선택하세요.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 예약 목록 */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">예약 목록</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadReservations}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      새로고침
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                </div>
+
+                {/* 검색 */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="검색..."
+                      value={reservationSearchTerm}
+                      onChange={(e) => setReservationSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 예약 리스트 */}
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {loading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      로딩 중...
+                    </div>
+                  ) : filteredReservations.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      예약이 없습니다.
+                    </div>
+                  ) : (
+                    filteredReservations.map((reservation) => (
+                      <div
+                        key={reservation.id}
+                        onClick={() => setSelectedReservation(reservation)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedReservation?.id === reservation.id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {reservation.child_name} ({reservation.child_age})
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(reservation.reservation_date).toLocaleDateString("ko-KR")}{" "}
+                              {reservation.reservation_time.substring(0, 5)}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {reservation.parent_phone}
+                            </p>
+                            <span
+                              className={`inline-block mt-2 px-2 py-1 text-xs rounded ${getReservationStatusColor(
+                                reservation.status
+                              )}`}
+                            >
+                              {getReservationStatusLabel(reservation.status)}
+                            </span>
+                          </div>
+                          <Eye className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 예약 상세 */}
+            <div className="lg:col-span-2">
+              {selectedReservation ? (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      예약 상세
+                    </h2>
+                    <div className="flex gap-2 items-center">
+                      {selectedReservation.status === "pending_deposit" && (
+                        <button
+                          onClick={() => handleConfirmDeposit(selectedReservation.id)}
+                          disabled={loading}
+                          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                          입금 확인
+                        </button>
+                      )}
+                      {loading && (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 예약 정보 */}
+                  <div className="mb-6 space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 번호:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.id.substring(0, 8)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            상태:
+                          </span>
+                          <span
+                            className={`ml-2 px-2 py-1 text-xs rounded ${getReservationStatusColor(
+                              selectedReservation.status
+                            )}`}
+                          >
+                            {getReservationStatusLabel(selectedReservation.status)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 날짜:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.reservation_date).toLocaleDateString("ko-KR")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 시간:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.reservation_time.substring(0, 5)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            아이 이름:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.child_name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            아이 연령:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.child_age}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-600 font-semibold">
+                            부모 전화번호:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.parent_phone}
+                          </span>
+                        </div>
+                        {selectedReservation.notes && (
+                          <div className="col-span-2">
+                            <span className="text-gray-600 font-semibold">
+                              메모:
+                            </span>
+                            <p className="mt-1 text-gray-800">
+                              {selectedReservation.notes}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약금:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.deposit_amount.toLocaleString()}원
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            입금 기한:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.deposit_confirmation_deadline).toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약일시:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.created_at).toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">왼쪽에서 예약을 선택하세요.</p>
                 </div>
               )}
             </div>
