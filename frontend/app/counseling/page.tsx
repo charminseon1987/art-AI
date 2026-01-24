@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Upload,
   MessageSquare,
@@ -18,18 +19,24 @@ import {
   Clock,
   User,
   Phone,
+  Share,
+  Copy,
+  Check,
+  X,
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import ChatInterface from "@/components/ChatInterface";
 import ReportDisplay from "@/components/ReportDisplay";
-import { generateChatReport, downloadReportPDF, createReservation, type CreateReservationRequest } from "@/lib/api";
+import { generateChatReport, downloadReportPDF, createReservation, type CreateReservationRequest, getReport } from "@/lib/api";
 
 export default function CounselingPage() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [reportData, setReportData] = useState<any>(null);
   const [chatResponses, setChatResponses] = useState<any[]>([]);
   const [simpleReport, setSimpleReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
   
   // 예약 관련 상태
   const [reservationDate, setReservationDate] = useState<string>("");
@@ -40,6 +47,126 @@ export default function CounselingPage() {
   const [notes, setNotes] = useState<string>("");
   const [creatingReservation, setCreatingReservation] = useState(false);
   const [reservationResult, setReservationResult] = useState<any>(null);
+  
+  // 공유하기 관련 상태
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // 공유 URL 생성
+  const getShareUrl = () => {
+    if (!reportData?.report?.id) return "";
+    return `${window.location.origin}/counseling?reportId=${reportData.report.id}`;
+  };
+
+  const shareTitle = "AI 그림 관찰 리포트";
+  const shareDescription = "아이의 그림을 AI로 분석한 결과를 확인해보세요.";
+
+  // URL 클립보드 복사
+  const copyToClipboard = async () => {
+    const url = getShareUrl();
+    if (!url) {
+      alert("공유할 URL을 생성할 수 없습니다.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      // 클립보드 API가 지원되지 않는 경우 대체 방법
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        alert("URL 복사에 실패했습니다. 수동으로 복사해주세요.");
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
+  // 카카오톡 공유
+  const shareToKakao = () => {
+    const url = getShareUrl();
+    if (!url) return;
+    
+    // 카카오톡 링크 공유 (간단한 방법)
+    const kakaoUrl = `https://story.kakao.com/share?url=${encodeURIComponent(url)}`;
+    window.open(kakaoUrl, "_blank", "width=600,height=600");
+  };
+
+  // 페이스북 공유
+  const shareToFacebook = () => {
+    const url = getShareUrl();
+    if (!url) return;
+    
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    window.open(facebookUrl, "_blank", "width=600,height=400");
+  };
+
+  // 트위터 공유
+  const shareToTwitter = () => {
+    const url = getShareUrl();
+    if (!url) return;
+    
+    const text = encodeURIComponent(`${shareTitle} - ${shareDescription}`);
+    const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${text}`;
+    window.open(twitterUrl, "_blank", "width=600,height=400");
+  };
+
+  // 링크드인 공유
+  const shareToLinkedIn = () => {
+    const url = getShareUrl();
+    if (!url) return;
+    
+    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+    window.open(linkedInUrl, "_blank", "width=600,height=400");
+  };
+
+  // URL에서 reportId를 읽어서 리포트 로드
+  useEffect(() => {
+    const reportId = searchParams.get("reportId");
+    if (reportId && !reportData) {
+      setLoadingReport(true);
+      getReport(reportId)
+        .then((data) => {
+          if (data.success && data.report) {
+            setReportData({ report: data.report });
+            setStep(3); // 리포트 표시 단계로 이동
+          } else {
+            alert("리포트를 찾을 수 없습니다.");
+          }
+        })
+        .catch((error) => {
+          console.error("리포트 로드 오류:", error);
+          alert("리포트를 불러오는 중 오류가 발생했습니다: " + error.message);
+        })
+        .finally(() => {
+          setLoadingReport(false);
+        });
+    }
+  }, [searchParams, reportData]);
+
+  // 리포트 로딩 중 표시
+  if (loadingReport) {
+    return (
+      <div className="min-h-screen py-12 px-4 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white p-8 rounded-lg shadow-md text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">리포트를 불러오는 중...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">
@@ -52,7 +179,7 @@ export default function CounselingPage() {
           <p className="text-lg text-gray-600">
             AI는 그림을 정리하고
             <br />
-            선생님은 상담으로 연결합니다
+            선생님은 대화로 연결합니다
           </p>
         </div>
 
@@ -587,6 +714,13 @@ export default function CounselingPage() {
                   📄 PDF 다운로드
                 </button>
                 <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white px-8 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <Share className="w-5 h-5" />
+                  공유하기
+                </button>
+                <button
                   onClick={() => setStep(4)}
                   className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
@@ -595,6 +729,80 @@ export default function CounselingPage() {
                 </button>
               </div>
             </div>
+
+            {/* 공유하기 모달 */}
+            {showShareModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                  
+                  <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                    공유하기
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {/* URL 복사 */}
+                    <button
+                      onClick={copyToClipboard}
+                      className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-3 border-2 border-gray-300 hover:border-gray-400"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span>복사 완료!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-5 h-5" />
+                          <span>링크 복사</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* 카카오톡 공유 */}
+                    <button
+                      onClick={shareToKakao}
+                      className="w-full bg-yellow-300 hover:bg-yellow-400 text-gray-800 px-6 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-3"
+                    >
+                      <span className="text-xl">💬</span>
+                      <span>카카오톡 공유</span>
+                    </button>
+
+                    {/* 페이스북 공유 */}
+                    <button
+                      onClick={shareToFacebook}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-3"
+                    >
+                      <span className="text-xl">📘</span>
+                      <span>페이스북 공유</span>
+                    </button>
+
+                    {/* 트위터 공유 */}
+                    <button
+                      onClick={shareToTwitter}
+                      className="w-full bg-sky-500 hover:bg-sky-600 text-white px-6 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-3"
+                    >
+                      <span className="text-xl">🐦</span>
+                      <span>트위터 공유</span>
+                    </button>
+
+                    {/* 링크드인 공유 */}
+                    <button
+                      onClick={shareToLinkedIn}
+                      className="w-full bg-blue-700 hover:bg-blue-800 text-white px-6 py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-3"
+                    >
+                      <span className="text-xl">💼</span>
+                      <span>링크드인 공유</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -608,7 +816,7 @@ export default function CounselingPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                   <Calendar className="w-6 h-6 text-green-500" />
-                  상담 예약하기
+                  대화 예약하기
                 </h2>
                 <p className="text-gray-600 mt-1">
                   날짜와 시간을 선택하고 예약 정보를 입력해주세요
@@ -923,7 +1131,7 @@ export default function CounselingPage() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                   <Heart className="w-6 h-6 text-red-500" />
-                  상담·수업 안내
+                  대화·수업 안내
                 </h2>
                 <p className="text-gray-600 mt-1">
                   선생님과 함께 더 깊이 알아보세요
@@ -966,10 +1174,10 @@ export default function CounselingPage() {
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl shadow-lg border border-green-100 text-center hover:shadow-xl transition-all duration-300">
                   <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
                   <h3 className="text-2xl font-bold text-gray-800 mb-4">
-                    전화 상담
+                    전화 문의
                   </h3>
                   <p className="text-gray-600 mb-4 text-sm">
-                    전화 상담은 오전 10시부터 오후 5시까지 가능합니다.
+                    전화 문의는 오전 10시부터 오후 5시까지 가능합니다.
                   </p>
                   <a
                     href="tel:010-4159-1102"
@@ -1000,8 +1208,8 @@ export default function CounselingPage() {
                     <span>⚠️</span> 중요 안내
                   </p>
                   <p className="leading-relaxed">
-                    본 그림 상담 리포트는 심리 진단이나 치료를 목적으로 하지
-                    않으며, 미술 수업과 상담을 돕기 위한 참고 자료입니다.
+                    본 그림 분석 리포트는 심리 진단이나 치료를 목적으로 하지
+                    않으며, 미술 수업과 대화를 돕기 위한 참고 자료입니다.
                   </p>
                 </div>
               </div>

@@ -22,9 +22,9 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "홈", icon: Home },
     { href: "/class", label: "미술 수업", icon: Palette },
-    { href: "/counseling", label: "그림 상담", icon: MessageSquare },
-    { href: "/fingerprint", label: "지문상담", icon: Search },
-    { href: "/consultation", label: "상담·수업 안내", icon: Phone },
+    { href: "/counseling", label: "그림 분석", icon: MessageSquare },
+    { href: "/fingerprint", label: "지문 분석", icon: Search },
+    { href: "/consultation", label: "대화·수업 안내", icon: Phone },
     { href: "/contact", label: "문의", icon: Mail },
   ];
 

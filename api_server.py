@@ -1,10 +1,11 @@
 """FastAPI 서버 - Next.js 프론트엔드와 연동"""
-from fastapi import FastAPI, File, UploadFile, Form, Header, Depends, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, Header, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List, Dict
 import os
 import sys
+import logging
 from io import BytesIO
 
 # 프로젝트 루트를 Python 경로에 추가
@@ -21,6 +22,8 @@ from services.contact_service import ContactService
 from services.usage_limit_service import UsageLimitService
 from services.phone_auth_service import get_phone_auth_service
 from services.reservation_service import get_reservation_service
+from services.payment_service import get_payment_service
+from services.stripe_service import get_stripe_service
 from models.class_work import ClassWork
 from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
@@ -31,8 +34,11 @@ from utils.supabase_auth import verify_supabase_token, require_admin_or_supervis
 # 디렉토리 설정
 setup_directories()
 
+# 로거 설정
+logger = logging.getLogger(__name__)
+
 # FastAPI 앱 생성
-app = FastAPI(title="AI 그림 상담 API", version="1.0.0")
+app = FastAPI(title="AI 그림 분석 도구 API", version="1.0.0")
 
 # CORS 설정
 allowed_origins = [
@@ -90,10 +96,24 @@ except Exception as e:
     print(f"Warning: ReservationService 초기화 실패: {e}")
     reservation_service = None
 
+# PaymentService 초기화
+try:
+    payment_service = get_payment_service()
+except Exception as e:
+    print(f"Warning: PaymentService 초기화 실패: {e}")
+    payment_service = None
+
+# StripeService 초기화
+try:
+    stripe_service = get_stripe_service()
+except Exception as e:
+    print(f"Warning: StripeService 초기화 실패: {e}")
+    stripe_service = None
+
 
 @app.get("/")
 async def root():
-    return {"message": "AI 그림 상담 API 서버", "status": "running"}
+    return {"message": "AI 그림 분석 도구 API 서버", "status": "running"}
 
 
 @app.post("/api/analyze-image")
@@ -390,13 +410,13 @@ async def get_reports(authorization: Optional[str] = Header(None)):
         )
 
 
-@app.post("/api/reports/{report_id}/counselor-answers")
-async def save_counselor_answers(
+@app.post("/api/reports/{report_id}/analyzer-answers")
+async def save_analyzer_answers(
     report_id: str,
     answers: dict,
     authorization: Optional[str] = Header(None)
 ):
-    """상담사 답변 저장 및 종합 분석 생성 (관리자 전용)"""
+    """분석 답변 저장 및 종합 분석 생성 (관리자 전용)"""
     # 관리자 인증 확인
     # verify_admin_token(authorization)  # 테스트용 비활성화
     try:
@@ -408,13 +428,13 @@ async def save_counselor_answers(
                 content={"error": "리포트를 찾을 수 없습니다."}
             )
         
-        # 상담사 답변 저장
-        counselor_answers = answers.get("answers", {})
+        # 분석 답변 저장
+        analyzer_answers = answers.get("answers", {})
         report_data.image_metadata = report_data.image_metadata or {}
-        report_data.image_metadata["counselor_answers"] = counselor_answers
-        
-        # 상담사 답변이 있으면 AI 종합 분석 생성
-        if counselor_answers:
+        report_data.image_metadata["analyzer_answers"] = analyzer_answers
+
+        # 분석 답변이 있으면 AI 종합 분석 생성
+        if analyzer_answers:
             try:
                 from agents.conclusion_agent import ConclusionAgent
                 from langchain_openai import ChatOpenAI
@@ -430,24 +450,24 @@ async def save_counselor_answers(
                 reference_material = scraping_service.get_reference_material()
                 conclusion_agent = ConclusionAgent(llm, reference_material=reference_material)
                 
-                # 상담사 답변을 바탕으로 종합 분석 생성
-                # 상담사 답변을 chat_responses 형식으로 변환
-                counselor_responses = []
+                # 분석 답변을 바탕으로 종합 분석 생성
+                # 분석 답변을 chat_responses 형식으로 변환
+                analyzer_responses = []
                 if report_data.reflection_questions and report_data.reflection_questions.questions:
                     for idx, question in enumerate(report_data.reflection_questions.questions):
-                        if idx in counselor_answers and counselor_answers[idx]:
-                            counselor_responses.append({
+                        if idx in analyzer_answers and analyzer_answers[idx]:
+                            analyzer_responses.append({
                                 "question": question,
-                                "answer": counselor_answers[idx]
+                                "answer": analyzer_answers[idx]
                             })
-                
+
                 # 종합 분석 생성
                 conclusion_task = conclusion_agent.create_conclusion_task(
                     report_data.observation,
                     report_data.emotional_language,
                     report_data.reflection_questions,
                     report_data.user_emotion,
-                    chat_responses=counselor_responses if counselor_responses else None
+                    chat_responses=analyzer_responses if analyzer_responses else None
                 )
                 
                 from crewai import Crew, Process
@@ -459,25 +479,25 @@ async def save_counselor_answers(
                 )
                 conclusion_result = conclusion_crew.kickoff()
                 
-                # 상담사 답변 기반 종합 분석 저장
-                report_data.image_metadata["counselor_based_analysis"] = str(conclusion_result)
-                
+                # 분석 답변 기반 종합 분석 저장
+                report_data.image_metadata["analyzer_based_analysis"] = str(conclusion_result)
+
             except Exception as e:
                 import traceback
-                print(f"상담사 답변 기반 종합 분석 생성 오류: {traceback.format_exc()}")
+                print(f"분석 답변 기반 종합 분석 생성 오류: {traceback.format_exc()}")
                 # 오류 발생 시에도 답변은 저장
-        
+
         # 리포트 저장
         report_service.save_report(report_data)
-        
+
         return {
             "success": True,
-            "message": "상담사 답변이 저장되었습니다."
+            "message": "분석 답변이 저장되었습니다."
         }
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"상담사 답변 저장 오류: {error_trace}")
+        print(f"분석 답변 저장 오류: {error_trace}")
         return JSONResponse(
             status_code=500,
             content={"error": f"답변 저장 실패: {str(e)}"}
@@ -527,35 +547,35 @@ async def get_report(report_id: str, authorization: Optional[str] = Header(None)
         )
 
 
-@app.post("/api/reports/{report_id}/counseling")
-async def conduct_counseling(report_id: str, responses: List[Dict]):
-    """상담 세션 진행"""
+@app.post("/api/reports/{report_id}/analyze")
+async def conduct_analysis(report_id: str, responses: List[Dict]):
+    """분석 세션 진행"""
     try:
-        from services.counseling_service import CounselingService
+        from services.analysis_service import AnalysisService
         from services.scraping_service import ArtTherapyScrapingService
-        
+
         report = report_service.load_report(report_id)
         if not report:
             return JSONResponse(
                 status_code=404,
                 content={"error": "리포트를 찾을 수 없습니다."}
             )
-        
+
         scraping_service = ArtTherapyScrapingService()
-        counseling_service = CounselingService(llm, scraping_service)
-        
-        # 상담 세션 진행
-        evaluation = counseling_service.conduct_counseling_session(
+        analysis_service = AnalysisService(llm, scraping_service)
+
+        # 분석 세션 진행
+        evaluation = analysis_service.conduct_analysis_session(
             report,
             responses
         )
-        
-        # 전문 상담 보고서 생성
-        professional_report = counseling_service.generate_professional_report(
+
+        # 전문 분석 보고서 생성
+        professional_report = analysis_service.generate_professional_report(
             report,
             evaluation
         )
-        
+
         return {
             "success": True,
             "professional_report": professional_report,
@@ -769,7 +789,7 @@ async def delete_class_work(
 
 @app.get("/api/fingerprint-data")
 async def get_fingerprint_data():
-    """지문상담 관련 데이터 반환"""
+    """지문 분석 관련 데이터 반환"""
     try:
         from services.scraping_service import ArtTherapyScrapingService
         scraping_service = ArtTherapyScrapingService()
@@ -1002,7 +1022,7 @@ async def generate_pdf_report(
             
             pdf_content = report_service.generate_pdf_from_markdown(
                 simple_report,
-                title="그림 관찰 기반 상담 참고 리포트",
+                title="그림 관찰 기반 분석 리포트",
                 image_base64=image_base64,
                 user_info=user_info,
                 report_user_id=report_data.user_id
@@ -1015,8 +1035,8 @@ async def generate_pdf_report(
         # 파일명 생성 (한글 파일명 인코딩 처리)
         date_str = report_data.created_at.strftime('%Y%m%d_%H%M%S')
         report_id_short = report_data.id[:8] if report_data.id else "unknown"
-        filename_kr = f"그림상담보고서_{date_str}_{report_id_short}.pdf"
-        filename_en = f"art_counseling_report_{date_str}_{report_id_short}.pdf"
+        filename_kr = f"그림분석보고서_{date_str}_{report_id_short}.pdf"
+        filename_en = f"art_analysis_report_{date_str}_{report_id_short}.pdf"
         
         # RFC 5987 형식으로 한글 파일명 인코딩
         from urllib.parse import quote
@@ -2007,6 +2027,436 @@ async def confirm_deposit(
         return JSONResponse(
             status_code=500,
             content={"error": f"입금 확인 실패: {str(e)}"}
+        )
+
+
+# ==================== Payment API Endpoints ====================
+
+@app.post("/api/payments/create-session")
+async def create_payment_session(
+    service_id: Optional[str] = Form(None),
+    amount: int = Form(...),
+    reservation_id: Optional[str] = Form(None),
+    payment_type: str = Form("full"),
+    authorization: Optional[str] = Header(None)
+):
+    """결제 세션 생성 API"""
+    try:
+        if not payment_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "결제 서비스가 사용할 수 없습니다."}
+            )
+
+        # 사용자 인증
+        user_info = None
+        try:
+            user_info = verify_supabase_token(authorization)
+        except HTTPException as e:
+            if e.status_code == 503:
+                # Supabase가 설정되지 않은 경우 기존 인증 방식 시도
+                try:
+                    verify_admin_token(authorization)
+                    # 관리자 모드에서는 임시 user_id 사용
+                    user_info = {"id": "admin"}
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                user_info = {"id": "admin"}
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+
+        if not user_info:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "사용자 인증이 필요합니다."}
+            )
+
+        user_id = user_info.get("id")
+        if not user_id:
+            return JSONResponse(
+                status_code=401,
+                content={"error": "사용자 ID를 찾을 수 없습니다."}
+            )
+
+        # 결제 세션 생성
+        result = payment_service.create_payment_session(
+            user_id=user_id,
+            service_id=service_id,
+            amount=amount,
+            reservation_id=reservation_id,
+            payment_type=payment_type,
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "payment_id": result["payment_id"],
+                "session_id": result["session_id"],
+                "checkout_url": result["checkout_url"],
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"결제 세션 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"결제 세션 생성 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/payments/verify/{session_id}")
+async def verify_payment(
+    session_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """결제 확인 API"""
+    try:
+        if not payment_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "결제 서비스가 사용할 수 없습니다."}
+            )
+
+        # 사용자 인증
+        user_info = None
+        try:
+            user_info = verify_supabase_token(authorization)
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    user_info = {"id": "admin"}
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                user_info = {"id": "admin"}
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+
+        user_id = user_info.get("id") if user_info else None
+
+        # 결제 확인
+        result = payment_service.verify_and_complete_payment(
+            session_id=session_id,
+            user_id=user_id
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"결제 확인 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"결제 확인 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/payments/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe 웹훅 엔드포인트"""
+    try:
+        if not stripe_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "Stripe 서비스가 사용할 수 없습니다."}
+            )
+
+        # 웹훅 서명 가져오기
+        signature = request.headers.get("stripe-signature")
+        if not signature:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Stripe 서명이 없습니다."}
+            )
+
+        # 요청 본문 읽기
+        payload = await request.body()
+
+        # 웹훅 처리
+        result = stripe_service.handle_webhook(payload, signature)
+
+        # 웹훅 이벤트에 따라 결제 상태 업데이트
+        if result.get("success") and result.get("event") == "checkout.session.completed":
+            session_id = result.get("session_id")
+            if session_id:
+                try:
+                    # 결제 완료 처리
+                    payment_service.verify_and_complete_payment(
+                        session_id=session_id,
+                        user_id=None  # 웹훅에서는 user_id 검증 생략
+                    )
+                except Exception as e:
+                    logger.error(f"웹훅 후 결제 처리 오류: {str(e)}")
+
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "received": True}
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"웹훅 처리 오류: {error_trace}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"웹훅 처리 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/payments")
+async def get_payments(
+    authorization: Optional[str] = Header(None)
+):
+    """결제 목록 조회 API"""
+    try:
+        if not payment_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "결제 서비스가 사용할 수 없습니다."}
+            )
+
+        # 사용자 인증 및 권한 확인
+        user_info = None
+        is_admin = False
+        try:
+            user_info = verify_supabase_token(authorization)
+            if user_info:
+                user_role = user_info.get("role", "user")
+                is_admin = user_role in ["admin", "supervisor"]
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    is_admin = True
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                is_admin = True
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+
+        user_id = user_info.get("id") if user_info else None
+
+        # 결제 목록 조회
+        payments = payment_service.get_payments(
+            user_id=user_id,
+            admin=is_admin
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "payments": payments
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"결제 목록 조회 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"결제 목록 조회 실패: {str(e)}"}
+        )
+
+
+@app.get("/api/payments/{payment_id}")
+async def get_payment(
+    payment_id: str,
+    authorization: Optional[str] = Header(None)
+):
+    """결제 상세 조회 API"""
+    try:
+        if not payment_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "결제 서비스가 사용할 수 없습니다."}
+            )
+
+        # 사용자 인증
+        user_info = None
+        try:
+            user_info = verify_supabase_token(authorization)
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    user_info = {"id": "admin", "role": "admin"}
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                user_info = {"id": "admin", "role": "admin"}
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+
+        user_id = user_info.get("id") if user_info else None
+
+        # 결제 조회
+        payment = payment_service.get_payment(
+            payment_id=payment_id,
+            user_id=user_id
+        )
+
+        if not payment:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "결제를 찾을 수 없습니다."}
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "payment": payment
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"결제 조회 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"결제 조회 실패: {str(e)}"}
+        )
+
+
+@app.post("/api/payments/{payment_id}/refund")
+async def refund_payment(
+    payment_id: str,
+    amount: Optional[int] = Form(None),
+    authorization: Optional[str] = Header(None)
+):
+    """환불 처리 API (관리자용)"""
+    try:
+        if not payment_service:
+            return JSONResponse(
+                status_code=503,
+                content={"error": "결제 서비스가 사용할 수 없습니다."}
+            )
+
+        # 관리자 권한 확인
+        user_info = None
+        is_admin = False
+        try:
+            user_info = verify_supabase_token(authorization)
+            if user_info:
+                user_role = user_info.get("role", "user")
+                is_admin = user_role in ["admin", "supervisor"]
+        except HTTPException as e:
+            if e.status_code == 503:
+                try:
+                    verify_admin_token(authorization)
+                    is_admin = True
+                except:
+                    return JSONResponse(
+                        status_code=401,
+                        content={"error": "인증이 필요합니다."}
+                    )
+            else:
+                return JSONResponse(
+                    status_code=e.status_code,
+                    content={"error": e.detail}
+                )
+        except Exception:
+            try:
+                verify_admin_token(authorization)
+                is_admin = True
+            except:
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "인증이 필요합니다."}
+                )
+
+        if not is_admin:
+            return JSONResponse(
+                status_code=403,
+                content={"error": "관리자 권한이 필요합니다."}
+            )
+
+        admin_user_id = user_info.get("id") if user_info else "admin"
+
+        # 환불 처리
+        result = payment_service.refund_payment(
+            payment_id=payment_id,
+            amount=amount,
+            admin_user_id=admin_user_id
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"환불 처리 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"환불 처리 실패: {str(e)}"}
         )
 
 

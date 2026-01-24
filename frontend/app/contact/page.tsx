@@ -81,9 +81,9 @@ export default function ContactPage() {
 
           <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl shadow-lg border border-green-100 text-center hover:shadow-xl transition-all duration-300">
             <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">전화 상담</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">전화 문의</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              전화 상담은 오전 10시부터 오후 5시까지 가능합니다.
+              전화 문의는 오전 10시부터 오후 5시까지 가능합니다.
             </p>
             <a
               href="tel:010-4159-1102"

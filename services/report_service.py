@@ -40,7 +40,7 @@ class ReportService:
         # 파일명 생성 (날짜_시간_리포트ID.md)
         date_str = report_data.created_at.strftime('%Y%m%d_%H%M%S')
         report_id_short = report_data.id[:8] if report_data.id else "unknown"
-        filename = f"그림상담보고서_{date_str}_{report_id_short}.md"
+        filename = f"그림분석보고서_{date_str}_{report_id_short}.md"
         file_path = os.path.join(output_dir, filename)
         
         # 파일 저장
@@ -66,7 +66,7 @@ class ReportService:
         return ReportData(**data)
     
     def update_report(self, report_id: str, counselor_comments: str = None, **kwargs) -> Optional[ReportData]:
-        """리포트 수정 (상담사용)"""
+        """리포트 수정 (분석용)"""
         report = self.load_report(report_id)
         if not report:
             return None
@@ -104,7 +104,7 @@ class ReportService:
         reports.sort(key=lambda x: x.created_at, reverse=True)
         return reports
     
-    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 상담 리포트", image_base64: str = None, user_info: Optional[Dict[str, Any]] = None, report_user_id: Optional[str] = None) -> bytes:
+    def generate_pdf_from_markdown(self, markdown_content: str, title: str = "그림 분석 리포트", image_base64: str = None, user_info: Optional[Dict[str, Any]] = None, report_user_id: Optional[str] = None) -> bytes:
         """마크다운 내용을 PDF로 변환"""
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -359,7 +359,7 @@ class ReportService:
         normal_style = styles['Normal']
         
         # 제목
-        story.append(Paragraph("그림 상담 리포트", title_style))
+        story.append(Paragraph("그림 분석 리포트", title_style))
         story.append(Spacer(1, 0.2*inch))
         
         # 생성일

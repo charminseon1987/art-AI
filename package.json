@@ -1,0 +1,5 @@
+{
+	"dependencies": {
+		"@polar-sh/nextjs": "^0.9.3"
+	}
+}

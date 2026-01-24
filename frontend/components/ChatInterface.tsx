@@ -41,8 +41,8 @@ export default function ChatInterface({
     );
   }
 
-  // 상담 질문 세트 (터미널에서 제공된 질문들)
-  const counselingQuestions = [
+  // 탐색 질문 세트 (터미널에서 제공된 질문들)
+  const explorationQuestions = [
     {
       id: "Q1",
       text: "당신이 사용한 다양한 색상 중에서 특히 어떤 색상이 이 그림에서 특별한 의미를 가진다고 느끼시나요?",
@@ -219,7 +219,7 @@ export default function ChatInterface({
             <br />
             이제 그림과 이야기를 정리해서
             <br />
-            상담에 도움이 되는 참고 자료를 만들어볼게요.
+            대화에 도움이 되는 참고 자료를 만들어볼게요.
           </p>
         </div>
       )}

@@ -10,11 +10,13 @@ class ImageObservationAgent:
     
     def __init__(self, llm: ChatOpenAI):
         self.agent = Agent(
-            role="이미지 관찰 전문가",
+            role="이미지 관찰 시스템",
             goal="그림을 해석하지 않고 객관적으로 관찰하고 구조화된 정보를 추출한다",
-            backstory="""당신은 미술 치료 전문가이자 관찰 전문가입니다. 
+            backstory="""당신은 AI 기반 이미지 관찰 시스템입니다.
             그림을 해석하거나 진단하지 않고, 눈에 보이는 것만을 정확히 관찰하고 기록합니다.
-            색상, 형태, 구성, 세부사항 등을 체계적으로 구조화합니다.""",
+            색상, 형태, 구성, 세부사항 등을 체계적으로 구조화하는 교육용 분석 도구입니다.
+
+            ⚠️ 본 시스템은 진단이나 치료를 목적으로 하지 않으며, 교육적 참고 자료를 제공하는 분석 도구입니다.""",
             verbose=True,
             llm=llm,
             allow_delegation=False

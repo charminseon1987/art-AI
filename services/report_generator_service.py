@@ -16,7 +16,7 @@ class ReportGeneratorService:
         report_data: ReportData,
         chat_responses: List[Dict[str, str]]
     ) -> str:
-        """Chat 응답을 포함한 상담 참고 리포트 생성"""
+        """Chat 응답을 포함한 교육 참고 리포트 생성"""
         
         # 아이의 말 정리 (의미 해석 없이 그대로 인용)
         child_words = []
@@ -55,7 +55,7 @@ class ReportGeneratorService:
 {json.dumps({
     "요약": report_data.professional_conclusion.executive_summary or "",
     "주요발견": report_data.professional_conclusion.key_findings[:5] if report_data.professional_conclusion.key_findings else [],
-    "상담방향성": report_data.professional_conclusion.counseling_direction or "",
+    "교육방향성": report_data.professional_conclusion.counseling_direction or "",
     "집중탐색영역": report_data.professional_conclusion.focus_areas[:5] if report_data.professional_conclusion.focus_areas else [],
     "전문가평가": report_data.professional_conclusion.professional_assessment or "",
     "권장사항": report_data.professional_conclusion.recommendations[:5] if report_data.professional_conclusion.recommendations else []
@@ -78,7 +78,7 @@ class ReportGeneratorService:
 [리포트 형식]
 다음 형식으로 작성하세요:
 
-# 그림 기반 상담 참고 리포트
+# 그림 기반 교육 참고 리포트
 
 ## 1. 그림 관찰 요약
 - 시각적 요소 정리
@@ -93,7 +93,7 @@ class ReportGeneratorService:
 - 의미 해석 없이 인용
 
 ## 4. 대화로 이어질 수 있는 질문
-- 상담자가 사용할 수 있는 질문 제시
+- 교육자가 사용할 수 있는 질문 제시
 - 개방적이고 탐색적인 질문
 
 ## 5. 안내 문구
@@ -115,7 +115,7 @@ class ReportGeneratorService:
                 return str(response)
         except Exception as e:
             # 에러 발생 시 기본 리포트 생성
-            return f"""# 그림 기반 상담 참고 리포트
+            return f"""# 그림 기반 교육 참고 리포트
 
 ## 1. 그림 관찰 요약
 {', '.join(report_data.observation.colors[:5]) if report_data.observation.colors else '관찰된 색상이 있습니다.'}
@@ -127,7 +127,7 @@ class ReportGeneratorService:
 {chr(10).join(f"- {r['answer']}" for r in chat_responses)}
 
 ## 4. 대화로 이어질 수 있는 질문
-상담자가 아이와 더 깊이 이야기할 수 있는 질문을 준비하세요.
+교육자가 아이와 더 깊이 이야기할 수 있는 질문을 준비하세요.
 
 ## 5. 안내 문구
 본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며, 심리 진단이나 치료를 목적으로 하지 않습니다.

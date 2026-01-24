@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS services (
 
 -- Insert initial service definitions
 INSERT INTO services (service_type, name, price_krw) VALUES
-('drawing_consultation', '그림 상담 AI 분석', 990),
+('drawing_consultation', '그림 상담 AI 분석', 14900),
 ('teacher_consultation', '선생님 상담 예약', 50000)
 ON CONFLICT (service_type) DO NOTHING;
 

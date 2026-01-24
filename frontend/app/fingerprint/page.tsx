@@ -159,7 +159,7 @@ export default function FingerprintPage() {
         {
           role: "assistant",
           content:
-            "안녕하세요! 지문상담에 관심을 가져주셔서 감사합니다. 궁금한 점이 있으시면 언제든지 문의해주세요. 😊",
+            "안녕하세요! 지문 분석에 관심을 가져주셔서 감사합니다. 궁금한 점이 있으시면 언제든지 문의해주세요. 😊",
           timestamp: new Date(),
         },
       ]);
@@ -181,9 +181,9 @@ export default function FingerprintPage() {
     // 간단한 자동 응답 (실제로는 API 호출)
     setTimeout(() => {
       const responses = [
-        "지문상담에 대해 궁금하신 점이 있으시군요! 자세한 내용은 상담 페이지에서 확인하실 수 있습니다.",
+        "지문 분석에 대해 궁금하신 점이 있으시군요! 자세한 내용은 분석 페이지에서 확인하실 수 있습니다.",
         "지문 분석은 하워드 가드너의 다중지능 이론을 바탕으로 진행됩니다.",
-        "더 자세한 상담이 필요하시면 카카오톡이나 네이버 예약을 통해 문의해주세요.",
+        "더 자세한 문의가 필요하시면 카카오톡이나 네이버 예약을 통해 문의해주세요.",
       ];
       const randomResponse =
         responses[Math.floor(Math.random() * responses.length)];
@@ -232,7 +232,7 @@ export default function FingerprintPage() {
     // 사용 횟수 확인
     if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {
       alert(
-        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+        "분석회수를 초과했습니다. 더 자세한 대화는 선생님과의 예약이 필요합니다."
       );
       return;
     }
@@ -395,19 +395,19 @@ export default function FingerprintPage() {
           </ul>
         </div>
 
-        {/* 지문상담 소개 */}
+        {/* 지문 분석 소개 */}
         <div className="bg-gradient-to-br from-white to-pink-50 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] p-8 mb-8 border border-pink-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-gradient-to-r from-fuchsia-500 to-purple-600 p-3 rounded-xl shadow-md">
               <Search className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-fuchsia-600 to-purple-600 bg-clip-text text-transparent">
-              지문상담이란?
+              지문 분석이란?
             </h2>
           </div>
           <p className="text-lg text-gray-700 mb-4 leading-relaxed">
             하워드 가드너(Howard Gardner)의 <strong>다중지능 이론</strong>을
-            바탕으로 한 지문 분석 상담입니다.
+            바탕으로 한 지문 분석입니다.
           </p>
 
           {/* 지문 형성 과정 이미지 및 설명 */}
@@ -739,14 +739,14 @@ export default function FingerprintPage() {
                       <p className="font-semibold mb-1">
                         분석회수를 초과했습니다.
                       </p>
-                      <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+                      <p>더 자세한 대화는 선생님과의 예약이 필요합니다.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Link
                         href="/consultation"
                         className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                       >
-                        상담 예약하기
+                        대화 예약하기
                       </Link>
                       <a
                         href={KAKAO_CHANNEL_URL}
@@ -789,7 +789,7 @@ export default function FingerprintPage() {
           )}
         </div>
 
-        {/* 지문상담 신청 */}
+        {/* 지문 분석 신청 */}
         <div className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 rounded-2xl shadow-2xl p-10 text-white text-center mb-8 relative overflow-hidden">
           {/* 배경 애니메이션 blob */}
           <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full opacity-10 blur-3xl animate-pulse"></div>
@@ -804,23 +804,23 @@ export default function FingerprintPage() {
               <span className="text-sm font-semibold">AI 기반 맞춤 분석</span>
             </div>
             <h2 className="text-2xl md:text-4xl font-bold mb-4 drop-shadow-lg">
-              지문상담으로 우리 아이의 강점을 발견하세요
+              지문 분석으로 우리 아이의 강점을 발견하세요
             </h2>
             <p className="text-lg md:text-xl mb-10 opacity-95">
-              하워드 가드너 다중지능 이론 기반 지문 분석 상담
+              하워드 가드너 다중지능 이론 기반 지문 분석
             </p>
             <div className="flex flex-col sm:flex-row gap-5 justify-center">
               <button
                 onClick={() => setIsChatOpen(true)}
                 className="bg-white text-pink-600 hover:bg-gray-50 hover:shadow-2xl px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-xl hover:scale-105"
               >
-                지문상담 문의하기
+                지문 분석 문의하기
               </button>
               <Link
                 href="/consultation"
                 className="bg-transparent border-3 border-white text-white hover:bg-white hover:text-fuchsia-600 px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg"
               >
-                상담·수업 안내로 이동
+                대화·수업 안내로 이동
               </Link>
             </div>
           </div>

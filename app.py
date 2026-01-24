@@ -1,4 +1,4 @@
-"""Streamlit 웹 애플리케이션 - AI 그림 상담 에이전트"""
+"""Streamlit 웹 애플리케이션 - AI 그림 분석 에이전트"""
 import streamlit as st
 import os
 from datetime import datetime
@@ -61,12 +61,12 @@ image_service, ai_service, report_service, counseling_service = init_services()
 
 # 사이드바
 with st.sidebar:
-    st.title("🎨 미술 수업 & 그림 상담")
+    st.title("🎨 미술 수업 & 그림 분석")
     st.markdown("---")
     
     page = st.radio(
         "메뉴",
-        ["🏠 홈", "🎨 미술 수업", "💬 그림 상담 (AI)", "🔍 지문상담", "📞 상담·수업 안내", "💌 문의"],
+        ["🏠 홈", "🎨 미술 수업", "💬 그림 분석 (AI)", "🔍 지문 분석", "📞 대화·수업 안내", "💌 문의"],
         label_visibility="collapsed"
     )
     
@@ -91,7 +91,7 @@ with st.sidebar:
     그림으로 아이 마음을 천천히 이해합니다.
     
     - 5살부터 고등학생까지
-    - 그림 상담 & 미술 수업
+    - 그림 분석 & 미술 수업
     """)
 
 # 메인 콘텐츠
@@ -107,19 +107,19 @@ if page == "🏠 홈":
         </h2>
         <p style='font-size: 1.1em; color: #7f8c8d; margin-bottom: 50px; line-height: 1.8;'>
             5살부터 고등학생까지 함께해온 미술 선생님이<br>
-            아이의 그림을 수업과 상담으로 연결합니다.
+            아이의 그림을 수업과 대화로 연결합니다.
         </p>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💬 그림 상담 받아보기", use_container_width=True, type="primary", key="home_consult"):
-            page = "💬 그림 상담 (AI)"
+        if st.button("💬 그림 분석 받아보기", use_container_width=True, type="primary", key="home_consult"):
+            page = "💬 그림 분석 (AI)"
             st.rerun()
     with col2:
-        if st.button("📞 미술 수업 상담 신청", use_container_width=True, key="home_class"):
-            page = "📞 상담·수업 안내"
+        if st.button("📞 미술 수업 대화 신청", use_container_width=True, key="home_class"):
+            page = "📞 대화·수업 안내"
             st.rerun()
     
     st.markdown("---")
@@ -130,8 +130,8 @@ if page == "🏠 홈":
         <h3 style='color: #2c3e50; margin-bottom: 30px;'>신뢰</h3>
         <div style='font-size: 1.1em; line-height: 2;'>
             <p>✔ 5살부터 고등학생까지 지속 수업</p>
-            <p>✔ 중학생 진로·심리 상담 35건 이상</p>
-            <p>✔ 하워드 가드너 지문 상담 100건 이상</p>
+            <p>✔ 중학생 진로·심리 대화 35건 이상</p>
+            <p>✔ 하워드 가드너 지문 분석 100건 이상</p>
         </div>
         <p style='margin-top: 20px; font-weight: bold; color: #34495e;'>
             📌 아이를 오래 만나온 경험이 가장 큰 기준입니다.
@@ -165,12 +165,12 @@ if page == "🏠 홈":
     st.markdown("""
     <div style='text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;'>
         <h3 style='margin-bottom: 20px;'>우리 아이에게 맞는 방식인지</h3>
-        <h3 style='margin-bottom: 30px;'>그림 상담으로 먼저 확인해보세요.</h3>
+        <h3 style='margin-bottom: 30px;'>그림 분석으로 먼저 확인해보세요.</h3>
     </div>
     """, unsafe_allow_html=True)
     
-    if st.button("💬 그림 상담 탭으로 이동", use_container_width=True, type="primary"):
-        page = "💬 그림 상담 (AI)"
+    if st.button("💬 그림 분석 탭으로 이동", use_container_width=True, type="primary"):
+        page = "💬 그림 분석 (AI)"
         st.rerun()
 
 elif page == "🎨 미술 수업":
@@ -218,15 +218,15 @@ elif page == "🎨 미술 수업":
     
     st.markdown("### 수업 장소")
     st.markdown("""
-    - 대전 ○○동 (상담 시 상세 안내)
+    - 대전 ○○동 (대화 시 상세 안내)
     - 개인 수업 / 소그룹 가능
     """)
     
-    if st.button("📞 상담 신청하기", use_container_width=True, type="primary"):
-        page = "📞 상담·수업 안내"
+    if st.button("📞 대화 신청하기", use_container_width=True, type="primary"):
+        page = "📞 대화·수업 안내"
         st.rerun()
 
-elif page == "💬 그림 상담 (AI)":
+elif page == "💬 그림 분석 (AI)":
     st.markdown("""
     <div style='text-align: center; padding: 30px 20px;'>
         <h1 style='font-size: 2.2em; color: #2c3e50; margin-bottom: 10px;'>
@@ -234,7 +234,7 @@ elif page == "💬 그림 상담 (AI)":
         </h1>
         <p style='font-size: 1.2em; color: #7f8c8d;'>
             AI는 그림을 정리하고<br>
-            선생님은 상담으로 연결합니다
+            선생님은 대화로 연결합니다
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -313,13 +313,13 @@ elif page == "💬 그림 상담 (AI)":
         4. **개인정보**: 그림은 저장되지 않으며, 메타데이터만 저장됩니다.
         """)
     
-    # STEP 2: Chat UI (기존 심리상담 코드 활용)
+    # STEP 2: Chat UI (기존 그림 분석 코드 활용)
     if st.session_state.current_report:
         st.markdown("---")
         st.markdown("### STEP 2. 간단 질문 (Chat 시작)")
         st.info("💬 **정답은 없습니다. 아이의 말 그대로를 적어주세요.**")
         
-        # 기존 심리상담 채팅 코드를 여기에 통합
+        # 기존 그림 분석 채팅 코드를 여기에 통합
         report = st.session_state.current_report
         
         if 'chat_initialized' not in st.session_state or st.session_state.get('chat_report_id') != report.id:
@@ -368,7 +368,7 @@ elif page == "💬 그림 상담 (AI)":
         if st.session_state.counseling_completed:
             st.markdown("---")
             st.markdown("### STEP 3. AI 그림 관찰 리포트 생성")
-            st.markdown("#### 📄 그림 관찰 기반 상담 참고 리포트")
+            st.markdown("#### 📄 그림 관찰 기반 교육 참고 리포트")
             
             # 리포트 요약 표시
             st.markdown("##### 1️⃣ 그림에서 관찰된 점")
@@ -416,7 +416,7 @@ elif page == "💬 그림 상담 (AI)":
                     st.download_button(
                         label="📥 전체 리포트 다운로드 (Markdown)",
                         data=md_report,
-                        file_name=f"그림상담보고서_{report.created_at.strftime('%Y%m%d_%H%M%S')}_{report.id[:8]}.md",
+                        file_name=f"그림분석보고서_{report.created_at.strftime('%Y%m%d_%H%M%S')}_{report.id[:8]}.md",
                         mime="text/markdown",
                         use_container_width=True
                     )

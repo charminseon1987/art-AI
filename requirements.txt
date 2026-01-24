@@ -43,3 +43,6 @@ aiofiles>=25.1.0
 # Supabase
 supabase>=2.0.0
 postgrest>=0.13.0
+
+# Payment Processing
+stripe>=7.0.0

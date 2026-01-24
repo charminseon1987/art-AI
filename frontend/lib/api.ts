@@ -170,6 +170,15 @@ export async function getReports() {
     return response.data;
   } catch (error: any) {
     console.error("API Error:", error);
+    // 에러 발생 시 빈 결과 반환 (앱 크래시 방지)
+    if (error.response?.status === 500 || error.response?.status === 404) {
+      return {
+        success: false,
+        reports: [],
+        error: error.response?.data?.error || "리포트를 불러올 수 없습니다.",
+      };
+    }
+    // 다른 에러는 그대로 throw
     throw new Error(
       error.response?.data?.error || "리포트 목록을 가져올 수 없습니다."
     );
@@ -191,10 +200,15 @@ export async function getReport(reportId: string) {
   }
 }
 
-export async function conductCounseling(reportId: string, responses: any[]) {
+/**
+ * 그림 분석 세션 진행
+ * @param reportId - 리포트 ID
+ * @param responses - 사용자 응답 목록
+ */
+export async function conductAnalysis(reportId: string, responses: any[]) {
   try {
     const response = await axios.post(
-      `/api/counseling`,
+      `/api/analysis`,
       { reportId, responses },
       {
         headers: {
@@ -206,9 +220,17 @@ export async function conductCounseling(reportId: string, responses: any[]) {
   } catch (error: any) {
     console.error("API Error:", error);
     throw new Error(
-      error.response?.data?.error || "상담 세션을 시작할 수 없습니다."
+      error.response?.data?.error || "분석 세션을 시작할 수 없습니다."
     );
   }
+}
+
+/**
+ * @deprecated Use conductAnalysis instead. This function will be removed in a future version.
+ * 구 버전 호환성을 위한 함수 (새 코드에서는 사용하지 마세요)
+ */
+export async function conductCounseling(reportId: string, responses: any[]) {
+  return conductAnalysis(reportId, responses);
 }
 
 export async function downloadReportPDF(reportId: string): Promise<void> {
@@ -255,7 +277,7 @@ export async function downloadReportPDF(reportId: string): Promise<void> {
     const downloadUrl = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = downloadUrl;
-    a.download = `그림상담보고서_${reportId.substring(0, 8)}.pdf`;
+    a.download = `그림분석보고서_${reportId.substring(0, 8)}.pdf`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(downloadUrl);
@@ -569,5 +591,149 @@ export async function getPageContent(
       success: false,
       contents: {},
     };
+  }
+}
+
+// ==================== Payment API ====================
+
+export interface CreatePaymentSessionRequest {
+  service_id?: string;
+  amount: number;
+  reservation_id?: string;
+  payment_type?: "full" | "deposit" | "balance";
+}
+
+export interface CreatePaymentSessionResponse {
+  success: boolean;
+  payment_id: string;
+  session_id: string;
+  checkout_url: string;
+}
+
+export async function createPaymentSession(
+  data: CreatePaymentSessionRequest
+): Promise<CreatePaymentSessionResponse> {
+  try {
+    const formData = new FormData();
+    if (data.service_id) {
+      formData.append("service_id", data.service_id);
+    }
+    formData.append("amount", data.amount.toString());
+    if (data.reservation_id) {
+      formData.append("reservation_id", data.reservation_id);
+    }
+    formData.append("payment_type", data.payment_type || "full");
+
+    const token = await getAuthToken();
+    const response = await axios.post<CreatePaymentSessionResponse>(
+      `${API_BASE}/api/payments/create-session`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("결제 세션 생성 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "결제 세션 생성 중 오류가 발생했습니다."
+    );
+  }
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  payment?: any;
+  message?: string;
+  payment_status?: string;
+}
+
+export async function verifyPayment(
+  sessionId: string
+): Promise<VerifyPaymentResponse> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.get<VerifyPaymentResponse>(
+      `${API_BASE}/api/payments/verify/${sessionId}`,
+      {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("결제 확인 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "결제 확인 중 오류가 발생했습니다."
+    );
+  }
+}
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  service_id?: string;
+  reservation_id?: string;
+  amount: number;
+  payment_type: string;
+  payment_method?: string;
+  payment_status: string;
+  stripe_checkout_session_id?: string;
+  stripe_payment_intent_id?: string;
+  created_at: string;
+  paid_at?: string;
+}
+
+export async function getPayments(): Promise<{
+  success: boolean;
+  payments: Payment[];
+}> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.get<{
+      success: boolean;
+      payments: Payment[];
+    }>(`${API_BASE}/api/payments`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("결제 목록 조회 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "결제 목록 조회 중 오류가 발생했습니다."
+    );
+  }
+}
+
+export async function getPayment(paymentId: string): Promise<{
+  success: boolean;
+  payment: Payment;
+}> {
+  try {
+    const token = await getAuthToken();
+    const response = await axios.get<{
+      success: boolean;
+      payment: Payment;
+    }>(`${API_BASE}/api/payments/${paymentId}`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("결제 조회 오류:", error);
+    throw new Error(
+      error.response?.data?.error || "결제 조회 중 오류가 발생했습니다."
+    );
   }
 }

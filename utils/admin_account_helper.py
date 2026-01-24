@@ -2,9 +2,11 @@
 관리자 계정 확인 및 복구 유틸리티
 
 사용법:
-    python utils/admin_account_helper.py list          # 모든 관리자 계정 목록 확인
-    python utils/admin_account_helper.py create        # 새 관리자 계정 생성
-    python utils/admin_account_helper.py set-role      # 기존 계정에 관리자 권한 부여
+    python utils/admin_account_helper.py list                              # 모든 관리자 계정 목록 확인
+    python utils/admin_account_helper.py create                            # 새 관리자 계정 생성 (대화형)
+    python utils/admin_account_helper.py create <email> <password> [name]   # 새 관리자 계정 생성 (명령줄)
+    python utils/admin_account_helper.py set-role                          # 기존 계정에 관리자 권한 부여
+    python utils/admin_account_helper.py set-role <email> <role>           # 기존 계정에 관리자 권한 부여 (명령줄)
 """
 
 import os
@@ -67,25 +69,31 @@ def list_admin_accounts():
         print("\nSupabase 연결을 확인하세요.")
 
 
-def create_admin_account():
+def create_admin_account(email: str = None, password: str = None, name: str = None, role: str = "admin"):
     """새 관리자 계정 생성"""
     supabase = get_supabase_client()
     
     print("\n📝 새 관리자 계정 생성\n")
     
-    email = input("이메일: ").strip()
+    # 명령줄 인자가 없으면 대화형으로 입력 받기
     if not email:
-        print("❌ 이메일을 입력해주세요.")
-        return
+        email = input("이메일: ").strip()
+        if not email:
+            print("❌ 이메일을 입력해주세요.")
+            return
     
-    password = getpass("비밀번호: ")
-    if not password or len(password) < 6:
-        print("❌ 비밀번호는 최소 6자 이상이어야 합니다.")
-        return
+    if not password:
+        password = getpass("비밀번호: ")
+        if not password or len(password) < 6:
+            print("❌ 비밀번호는 최소 6자 이상이어야 합니다.")
+            return
     
-    name = input("이름 (선택사항): ").strip()
+    if not name:
+        name = input("이름 (선택사항): ").strip()
     
-    print("\n계정 생성 중...")
+    print(f"\n계정 생성 중...")
+    print(f"  이메일: {email}")
+    print(f"  역할: {role}")
     
     try:
         # Supabase Auth를 통해 사용자 생성
@@ -95,7 +103,7 @@ def create_admin_account():
             "email_confirm": True,  # 이메일 인증 자동 완료
             "user_metadata": {
                 "name": name or "",
-                "role": "admin"
+                "role": role
             }
         })
         
@@ -110,12 +118,13 @@ def create_admin_account():
             "id": user_id,
             "email": email,
             "name": name or "",
-            "role": "admin"
+            "role": role
         }).execute()
         
         print(f"\n✅ 관리자 계정이 성공적으로 생성되었습니다!")
         print(f"   이메일: {email}")
-        print(f"   역할: admin")
+        print(f"   비밀번호: {'*' * len(password)}")
+        print(f"   역할: {role}")
         print(f"\n이제 이 계정으로 로그인할 수 있습니다.")
         
     except Exception as e:
@@ -123,53 +132,66 @@ def create_admin_account():
         print("\n계정 생성에 실패했습니다. 이메일이 이미 사용 중일 수 있습니다.")
 
 
-def set_admin_role():
+def set_admin_role(email: str = None, role: str = None):
     """기존 계정에 관리자 권한 부여"""
     supabase = get_supabase_client()
     
     print("\n🔧 기존 계정에 관리자 권한 부여\n")
     
-    email = input("이메일: ").strip()
+    # 명령줄 인자가 없으면 대화형으로 입력 받기
     if not email:
-        print("❌ 이메일을 입력해주세요.")
+        email = input("이메일: ").strip()
+        if not email:
+            print("❌ 이메일을 입력해주세요.")
+            return
+    
+    if not role:
+        try:
+            # profiles 테이블에서 해당 이메일의 사용자 찾기
+            response = supabase.table("profiles").select("id, email, name, role").eq("email", email).execute()
+            
+            if not response.data:
+                print(f"❌ '{email}' 계정을 찾을 수 없습니다.")
+                print("먼저 회원가입을 통해 계정을 생성하세요.")
+                return
+            
+            user = response.data[0]
+            current_role = user.get("role", "user")
+            
+            print(f"\n현재 계정 정보:")
+            print(f"  이메일: {user.get('email')}")
+            print(f"  이름: {user.get('name', 'N/A')}")
+            print(f"  현재 역할: {current_role}")
+            
+            if current_role in ["admin", "supervisor"]:
+                print(f"\n⚠️  이미 관리자 권한이 있습니다.")
+                change = input("역할을 변경하시겠습니까? (y/n): ").strip().lower()
+                if change != "y":
+                    return
+            
+            role = input("\n부여할 역할을 선택하세요 (admin/supervisor): ").strip().lower()
+            if role not in ["admin", "supervisor"]:
+                print("❌ 'admin' 또는 'supervisor'만 선택할 수 있습니다.")
+                return
+        except Exception as e:
+            print(f"❌ 오류 발생: {e}")
+            return
+    
+    if role not in ["admin", "supervisor"]:
+        print("❌ 'admin' 또는 'supervisor'만 선택할 수 있습니다.")
         return
     
-    print("\n권한 부여 중...")
+    print(f"\n권한 부여 중...")
+    print(f"  이메일: {email}")
+    print(f"  역할: {role}")
     
     try:
-        # profiles 테이블에서 해당 이메일의 사용자 찾기
-        response = supabase.table("profiles").select("id, email, name, role").eq("email", email).execute()
-        
-        if not response.data:
-            print(f"❌ '{email}' 계정을 찾을 수 없습니다.")
-            print("먼저 회원가입을 통해 계정을 생성하세요.")
-            return
-        
-        user = response.data[0]
-        current_role = user.get("role", "user")
-        
-        print(f"\n현재 계정 정보:")
-        print(f"  이메일: {user.get('email')}")
-        print(f"  이름: {user.get('name', 'N/A')}")
-        print(f"  현재 역할: {current_role}")
-        
-        if current_role in ["admin", "supervisor"]:
-            print(f"\n⚠️  이미 관리자 권한이 있습니다.")
-            change = input("역할을 변경하시겠습니까? (y/n): ").strip().lower()
-            if change != "y":
-                return
-        
-        role_choice = input("\n부여할 역할을 선택하세요 (admin/supervisor): ").strip().lower()
-        if role_choice not in ["admin", "supervisor"]:
-            print("❌ 'admin' 또는 'supervisor'만 선택할 수 있습니다.")
-            return
-        
         # 역할 업데이트
         update_response = supabase.table("profiles").update({
-            "role": role_choice
+            "role": role
         }).eq("email", email).execute()
         
-        print(f"\n✅ '{email}' 계정의 역할이 '{role_choice}'로 변경되었습니다.")
+        print(f"\n✅ '{email}' 계정의 역할이 '{role}'로 변경되었습니다.")
         print("이제 이 계정으로 관리자 페이지에 접근할 수 있습니다.")
         
     except Exception as e:
@@ -181,9 +203,14 @@ def main():
     if len(sys.argv) < 2:
         print(__doc__)
         print("\n사용 가능한 명령어:")
-        print("  list       - 모든 관리자 계정 목록 확인")
-        print("  create     - 새 관리자 계정 생성")
-        print("  set-role   - 기존 계정에 관리자 권한 부여")
+        print("  list                              - 모든 관리자 계정 목록 확인")
+        print("  create                            - 새 관리자 계정 생성 (대화형)")
+        print("  create <email> <password> [name]  - 새 관리자 계정 생성 (명령줄)")
+        print("  set-role                          - 기존 계정에 관리자 권한 부여 (대화형)")
+        print("  set-role <email> <role>            - 기존 계정에 관리자 권한 부여 (명령줄)")
+        print("\n예시:")
+        print("  python utils/admin_account_helper.py create admin@test.com Admin123! 관리자")
+        print("  python utils/admin_account_helper.py set-role user@test.com admin")
         return
     
     command = sys.argv[1].lower()
@@ -191,9 +218,24 @@ def main():
     if command == "list":
         list_admin_accounts()
     elif command == "create":
-        create_admin_account()
+        # 명령줄 인자로 이메일과 비밀번호가 제공된 경우
+        if len(sys.argv) >= 4:
+            email = sys.argv[2]
+            password = sys.argv[3]
+            name = sys.argv[4] if len(sys.argv) > 4 else None
+            create_admin_account(email=email, password=password, name=name)
+        else:
+            # 대화형 모드
+            create_admin_account()
     elif command == "set-role":
-        set_admin_role()
+        # 명령줄 인자로 이메일과 역할이 제공된 경우
+        if len(sys.argv) >= 4:
+            email = sys.argv[2]
+            role = sys.argv[3]
+            set_admin_role(email=email, role=role)
+        else:
+            # 대화형 모드
+            set_admin_role()
     else:
         print(f"❌ 알 수 없는 명령어: {command}")
         print(__doc__)

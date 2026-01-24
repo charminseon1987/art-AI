@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 class ArtTherapyScrapingService:
-    """미술 심리 및 미술 치료 관련 정보 스크래핑 서비스"""
+    """미술 심리 및 미술 교육 관련 정보 스크래핑 서비스"""
     
     def __init__(self, cache_dir: str = "data/scraped"):
         self.cache_dir = cache_dir
@@ -22,7 +22,7 @@ class ArtTherapyScrapingService:
         self.scrape_tool = ScrapeWebsiteTool()
     
     def scrape_art_therapy_resources(self) -> Dict[str, Any]:
-        """미술 치료 관련 리소스 스크래핑"""
+        """미술 교육 관련 리소스 스크래핑"""
         cache_file = os.path.join(self.cache_dir, "art_therapy_resources.json")
         
         # 캐시 확인
@@ -91,7 +91,7 @@ class ArtTherapyScrapingService:
         return composition_analysis
     
     def _scrape_art_therapy_cases(self) -> List[Dict[str, str]]:
-        """미술 치료 사례 정보 (참고용)"""
+        """미술 교육 사례 정보 (참고용)"""
         # 실제로는 웹에서 스크래핑하거나 데이터베이스에서 가져옴
         cases = [
             {
@@ -114,7 +114,7 @@ class ArtTherapyScrapingService:
         return cases
     
     def get_psychology_resources(self) -> str:
-        """심리상담 논문 및 자료 스크래핑"""
+        """심리 분석 논문 및 자료 스크래핑"""
         cache_file = os.path.join(self.cache_dir, "psychology_resources.json")
         
         if os.path.exists(cache_file):
@@ -132,22 +132,22 @@ class ArtTherapyScrapingService:
         return self._format_psychology_resources(resources)
     
     def _scrape_art_therapy_research(self) -> List[Dict[str, str]]:
-        """미술 치료 연구 논문 정보"""
+        """미술 교육 연구 논문 정보"""
         return [
             {
-                "title": "미술 치료를 통한 감정 표현 연구",
-                "key_findings": "그림을 통한 감정 표현은 언어적 표현과 다른 차원의 심리적 정보를 제공함",
-                "application": "색상, 형태, 구성을 통한 감정 상태 평가에 활용"
+                "title": "미술 교육을 통한 감정 표현 연구",
+                "key_findings": "그림을 통한 감정 표현은 언어적 표현과 다른 차원의 표현 정보를 제공함",
+                "application": "색상, 형태, 구성을 통한 표현 상태 관찰에 활용"
             },
             {
-                "title": "색채 심리학과 미술 치료",
+                "title": "색채 심리학과 미술 교육",
                 "key_findings": "색상 선택은 무의식적 감정 상태를 반영할 수 있음",
-                "application": "색상 분석을 통한 감정 상태 파악"
+                "application": "색상 분석을 통한 표현 상태 파악"
             },
             {
-                "title": "미술 치료에서의 상징 분석",
-                "key_findings": "그림의 상징적 요소는 내면의 갈등과 욕구를 나타낼 수 있음",
-                "application": "상징 분석을 통한 심리적 통찰 도출"
+                "title": "미술 교육에서의 상징 분석",
+                "key_findings": "그림의 상징적 요소는 표현 특징을 나타낼 수 있음",
+                "application": "상징 분석을 통한 표현 통찰 도출"
             }
         ]
     
@@ -181,9 +181,9 @@ class ArtTherapyScrapingService:
     
     def _format_psychology_resources(self, resources: Dict[str, Any]) -> str:
         """심리학 자료 포맷팅"""
-        formatted = "## 심리상담 참고 자료\n\n"
+        formatted = "## 그림 분석 참고 자료\n\n"
         
-        formatted += "### 미술 치료 연구\n"
+        formatted += "### 미술 교육 연구\n"
         for research in resources.get("art_therapy_research", []):
             formatted += f"- **{research['title']}**: {research['key_findings']}\n"
             formatted += f"  적용: {research['application']}\n"
@@ -234,11 +234,11 @@ class ArtTherapyScrapingService:
         return reference
     
     def scrape_web_art_therapy_info(self, query: str) -> str:
-        """웹에서 미술 치료 관련 정보 검색 및 스크래핑"""
+        """웹에서 미술 교육 관련 정보 검색 및 스크래핑"""
         try:
             # 간단한 웹 검색 (실제로는 더 정교한 검색 엔진 사용)
             # 여기서는 기본적인 정보만 반환
-            return f"'{query}'에 대한 미술 치료 관련 정보를 검색했습니다."
+            return f"'{query}'에 대한 미술 교육 관련 정보를 검색했습니다."
         except Exception as e:
             return f"웹 스크래핑 중 오류 발생: {str(e)}"
     
