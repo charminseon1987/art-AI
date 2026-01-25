@@ -24,6 +24,7 @@ from services.phone_auth_service import get_phone_auth_service
 from services.reservation_service import get_reservation_service
 from services.payment_service import get_payment_service
 from services.stripe_service import get_stripe_service
+from services.email_service import EmailService
 from models.class_work import ClassWork
 from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
@@ -97,6 +98,14 @@ try:
 except Exception as e:
     print(f"Warning: ReportGeneratorService 초기화 실패: {e}")
     report_generator_service = None
+
+# EmailService 초기화 (에러 발생 시에도 서버가 시작되도록)
+try:
+    email_service = EmailService()
+except Exception as e:
+    print(f"Warning: EmailService 초기화 실패: {e}")
+    print("Resend API 키가 설정되지 않았습니다. 이메일 전송 기능은 사용할 수 없습니다.")
+    email_service = None
 
 # ReservationService 초기화
 try:
@@ -386,10 +395,52 @@ async def generate_report(
         
         report_service.save_report(report_data)
         
+        # 이메일 전송 (user_id가 있는 경우에만)
+        email_sent = False
+        if email_service and report_data.user_id:
+            try:
+                print(f"[generate-report] 이메일 전송 시도: user_id={report_data.user_id}")
+                
+                # 사용자 이메일 조회
+                user_email = email_service.get_user_email(report_data.user_id)
+                
+                if user_email:
+                    # PDF 생성
+                    image_base64 = report_data.image_metadata.get("base64", None) if report_data.image_metadata else None
+                    
+                    pdf_content = report_service.generate_pdf_from_markdown(
+                        simple_report,
+                        title="그림 관찰 기반 분석 리포트",
+                        image_base64=image_base64,
+                        user_info=None,  # 이메일 전송 시에는 user_info 불필요
+                        report_user_id=report_data.user_id
+                    )
+                    
+                    # 이메일 전송
+                    email_result = email_service.send_report_email(
+                        report_data,
+                        pdf_content,
+                        user_email
+                    )
+                    
+                    if email_result.get("success"):
+                        print(f"[generate-report] 이메일 전송 성공: {user_email}")
+                        email_sent = True
+                    else:
+                        print(f"[generate-report] 이메일 전송 실패: {email_result.get('message')}")
+                else:
+                    print(f"[generate-report] 사용자 이메일을 찾을 수 없습니다: user_id={report_data.user_id}")
+            except Exception as email_error:
+                import traceback
+                email_error_trace = traceback.format_exc()
+                print(f"[generate-report] 이메일 전송 중 오류 발생 (리포트 생성은 성공): {email_error_trace}")
+                # 이메일 전송 실패해도 리포트 생성은 성공으로 처리
+        
         return {
             "success": True,
             "report_id": report_data.id,
             "simple_report": simple_report,
+            "email_sent": email_sent,  # 이메일 전송 여부 포함
         }
     except Exception as e:
         import traceback
