@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
     if (!supabaseUrl || !supabaseAnonKey) {
       if (process.env.NODE_ENV === "development") {
         console.warn(
-          "Supabase 환경 변수가 설정되지 않았습니다. 개발 모드에서는 접근을 허용합니다."
+          "Supabase 환경 변수가 설정되지 않았습니다. 개발 모드에서는 접근을 허용합니다.",
         );
         return NextResponse.next();
       }

@@ -13,6 +13,7 @@ import {
   Pause,
   FileText,
   Palette,
+  Star,
 } from "lucide-react";
 
 interface AIFeature {
@@ -367,7 +368,7 @@ export default function AIStudioSection() {
           {[
             { label: "분석된 그림", value: "10,000+", icon: ImageIcon },
             { label: "정확도", value: "95%", icon: Brain },
-            { label: "AI 모델", value: "GPT-4", icon: Sparkles },
+            { label: "만족도", value: "98%", icon: Star },
             { label: "사용자", value: "5,000+", icon: Zap },
           ].map((stat, index) => (
             <motion.div

@@ -77,7 +77,7 @@ export default function PinterestGallery({
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     return () => {
@@ -96,7 +96,8 @@ export default function PinterestGallery({
     visibleItems.forEach((item) => {
       const minHeight = Math.min(...columnHeights);
       const column = columnHeights.indexOf(minHeight);
-      const aspectRatio = item.height && item.width ? item.height / item.width : 1.5;
+      const aspectRatio =
+        item.height && item.width ? item.height / item.width : 1.5;
       const itemHeight = 300 * aspectRatio;
 
       layout.push({
@@ -143,7 +144,10 @@ export default function PinterestGallery({
               onClick={() => setSelectedItem(item)}
             >
               <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white">
-                <div className="relative w-full" style={{ aspectRatio: "auto" }}>
+                <div
+                  className="relative w-full"
+                  style={{ aspectRatio: "auto" }}
+                >
                   <Image
                     src={item.image}
                     alt={item.title || "Gallery item"}
@@ -169,34 +173,42 @@ export default function PinterestGallery({
                     {/* 분석 보고서 예시 정보 */}
                     {item.reportData && (
                       <div className="space-y-2 mt-3 pt-3 border-t border-white/20">
-                        {item.reportData.emotions && item.reportData.emotions.length > 0 && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <Brain className="w-3 h-3 text-pink-300" />
-                            <span className="text-gray-200">
-                              {item.reportData.emotions.slice(0, 2).join(", ")}
-                              {item.reportData.emotions.length > 2 && "..."}
-                            </span>
-                          </div>
-                        )}
-                        {item.reportData.colors && item.reportData.colors.length > 0 && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <Palette className="w-3 h-3 text-purple-300" />
-                            <div className="flex gap-1">
-                              {item.reportData.colors.slice(0, 3).map((color, i) => (
-                                <span
-                                  key={i}
-                                  className="px-2 py-0.5 bg-white/20 rounded text-gray-200"
-                                >
-                                  {color}
-                                </span>
-                              ))}
+                        {item.reportData.emotions &&
+                          item.reportData.emotions.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <Brain className="w-3 h-3 text-pink-300" />
+                              <span className="text-gray-200">
+                                {item.reportData.emotions
+                                  .slice(0, 2)
+                                  .join(", ")}
+                                {item.reportData.emotions.length > 2 && "..."}
+                              </span>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        {item.reportData.colors &&
+                          item.reportData.colors.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <Palette className="w-3 h-3 text-purple-300" />
+                              <div className="flex gap-1">
+                                {item.reportData.colors
+                                  .slice(0, 3)
+                                  .map((color, i) => (
+                                    <span
+                                      key={i}
+                                      className="px-2 py-0.5 bg-white/20 rounded text-gray-200"
+                                    >
+                                      {color}
+                                    </span>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
                         {item.reportData.emotionalTone && (
                           <div className="flex items-center gap-2 text-xs">
                             <Sparkles className="w-3 h-3 text-yellow-300" />
-                            <span className="text-gray-200">{item.reportData.emotionalTone}</span>
+                            <span className="text-gray-200">
+                              {item.reportData.emotionalTone}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -264,9 +276,11 @@ export default function PinterestGallery({
                   </h2>
                 )}
                 {selectedItem.description && (
-                  <p className="text-gray-600 mb-4">{selectedItem.description}</p>
+                  <p className="text-gray-600 mb-4">
+                    {selectedItem.description}
+                  </p>
                 )}
-                
+
                 {/* 분석 보고서 상세 정보 */}
                 {selectedItem.reportData && (
                   <div className="mb-6 p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl border border-pink-200">
@@ -275,89 +289,115 @@ export default function PinterestGallery({
                       분석 결과 요약
                     </h3>
                     <div className="space-y-3">
-                      {selectedItem.reportData.emotions && selectedItem.reportData.emotions.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Brain className="w-4 h-4 text-purple-600" />
-                            <span className="font-semibold text-gray-700 text-sm">주요 감정</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.reportData.emotions.map((emotion, i) => (
-                              <span
-                                key={i}
-                                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
-                              >
-                                {emotion}
+                      {selectedItem.reportData.emotions &&
+                        selectedItem.reportData.emotions.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Brain className="w-4 h-4 text-purple-600" />
+                              <span className="font-semibold text-gray-700 text-sm">
+                                주요 감정
                               </span>
-                            ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedItem.reportData.emotions.map(
+                                (emotion, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
+                                  >
+                                    {emotion}
+                                  </span>
+                                ),
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {selectedItem.reportData.colors && selectedItem.reportData.colors.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Palette className="w-4 h-4 text-pink-600" />
-                            <span className="font-semibold text-gray-700 text-sm">주요 색상</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.reportData.colors.map((color, i) => (
-                              <span
-                                key={i}
-                                className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium"
-                              >
-                                {color}
+                        )}
+                      {selectedItem.reportData.colors &&
+                        selectedItem.reportData.colors.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Palette className="w-4 h-4 text-pink-600" />
+                              <span className="font-semibold text-gray-700 text-sm">
+                                주요 색상
                               </span>
-                            ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedItem.reportData.colors.map(
+                                (color, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-medium"
+                                  >
+                                    {color}
+                                  </span>
+                                ),
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {selectedItem.reportData.shapes && selectedItem.reportData.shapes.length > 0 && (
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Sparkles className="w-4 h-4 text-blue-600" />
-                            <span className="font-semibold text-gray-700 text-sm">발견된 형태</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.reportData.shapes.map((shape, i) => (
-                              <span
-                                key={i}
-                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
-                              >
-                                {shape}
+                        )}
+                      {selectedItem.reportData.shapes &&
+                        selectedItem.reportData.shapes.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Sparkles className="w-4 h-4 text-blue-600" />
+                              <span className="font-semibold text-gray-700 text-sm">
+                                발견된 형태
                               </span>
-                            ))}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedItem.reportData.shapes.map(
+                                (shape, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                                  >
+                                    {shape}
+                                  </span>
+                                ),
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {selectedItem.reportData.emotionalTone && (
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <Sparkles className="w-4 h-4 text-yellow-600" />
-                            <span className="font-semibold text-gray-700 text-sm">감정 톤</span>
+                            <span className="font-semibold text-gray-700 text-sm">
+                              감정 톤
+                            </span>
                           </div>
-                          <p className="text-gray-600 text-sm">{selectedItem.reportData.emotionalTone}</p>
+                          <p className="text-gray-600 text-sm">
+                            {selectedItem.reportData.emotionalTone}
+                          </p>
                         </div>
                       )}
                       {selectedItem.reportData.intensity && (
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <Brain className="w-4 h-4 text-indigo-600" />
-                            <span className="font-semibold text-gray-700 text-sm">강도</span>
+                            <span className="font-semibold text-gray-700 text-sm">
+                              강도
+                            </span>
                           </div>
-                          <p className="text-gray-600 text-sm">{selectedItem.reportData.intensity}</p>
+                          <p className="text-gray-600 text-sm">
+                            {selectedItem.reportData.intensity}
+                          </p>
                         </div>
                       )}
                       {selectedItem.reportData.createdAt && (
                         <div className="pt-2 border-t border-gray-200">
                           <p className="text-xs text-gray-500">
-                            분석일: {new Date(selectedItem.reportData.createdAt).toLocaleDateString("ko-KR")}
+                            분석일:{" "}
+                            {new Date(
+                              selectedItem.reportData.createdAt,
+                            ).toLocaleDateString("ko-KR")}
                           </p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex gap-3">
                   <button className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg transition-colors">
                     <Heart className="w-4 h-4" />

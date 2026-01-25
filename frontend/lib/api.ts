@@ -20,7 +20,7 @@ export interface AnalyzeImageResponse {
 
 export async function analyzeImage(
   file: File,
-  emotion?: string
+  emotion?: string,
 ): Promise<AnalyzeImageResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -43,7 +43,7 @@ export async function analyzeImage(
           "Content-Type": "multipart/form-data",
         },
         timeout: 120000, // 2분 타임아웃 (이미지 분석은 시간이 걸릴 수 있음)
-      }
+      },
     );
 
     console.log("[analyzeImage] 분석 완료:", {
@@ -53,7 +53,8 @@ export async function analyzeImage(
 
     // 응답에서 success가 false인 경우도 에러로 처리
     if (response.data.success === false) {
-      const errorMessage = (response.data as any).error || "분석에 실패했습니다.";
+      const errorMessage =
+        (response.data as any).error || "분석에 실패했습니다.";
       throw new Error(errorMessage);
     }
 
@@ -77,33 +78,41 @@ export async function analyzeImage(
       // 서버가 응답을 반환했지만 에러 상태인 경우
       const errorData = error.response.data;
       let errorMessage = "";
-      
-      if (typeof errorData === 'object') {
-        errorMessage = errorData?.error || errorData?.message || `서버 오류가 발생했습니다. (${error.response.status})`;
+
+      if (typeof errorData === "object") {
+        errorMessage =
+          errorData?.error ||
+          errorData?.message ||
+          `서버 오류가 발생했습니다. (${error.response.status})`;
         // 백엔드에서 전달한 상세 에러 정보가 있으면 포함
         if (errorData?.error_type) {
           errorMessage += ` [${errorData.error_type}]`;
         }
-      } else if (typeof errorData === 'string') {
+      } else if (typeof errorData === "string") {
         errorMessage = errorData;
       } else {
         errorMessage = `서버 오류가 발생했습니다. (${error.response.status})`;
       }
-      
+
       // 500 에러인 경우 더 자세한 정보 제공
       if (error.response.status === 500) {
         console.error("[analyzeImage] 백엔드 500 에러 상세:", errorData);
-        if (errorData?.traceback && process.env.NODE_ENV === 'development') {
-          console.error("[analyzeImage] 백엔드 트레이스백:", errorData.traceback);
+        if (errorData?.traceback && process.env.NODE_ENV === "development") {
+          console.error(
+            "[analyzeImage] 백엔드 트레이스백:",
+            errorData.traceback,
+          );
         }
       }
-      
+
       throw new Error(errorMessage);
     } else if (error.request) {
       // 요청은 보냈지만 응답을 받지 못한 경우
-      console.error("[analyzeImage] 백엔드 연결 실패 - 요청은 보냈지만 응답 없음");
+      console.error(
+        "[analyzeImage] 백엔드 연결 실패 - 요청은 보냈지만 응답 없음",
+      );
       throw new Error(
-        "서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요."
+        "서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.",
       );
     } else if (error.message) {
       // 기타 에러 (타임아웃 등)
@@ -111,7 +120,11 @@ export async function analyzeImage(
     } else {
       // 알 수 없는 에러
       const errorString = String(error);
-      throw new Error(errorString !== '[object Object]' ? errorString : "알 수 없는 오류가 발생했습니다.");
+      throw new Error(
+        errorString !== "[object Object]"
+          ? errorString
+          : "알 수 없는 오류가 발생했습니다.",
+      );
     }
   }
 }
@@ -119,7 +132,7 @@ export async function analyzeImage(
 export async function generateChatReport(
   reportId: string,
   chatResponses: Array<{ question: string; answer: string }>,
-  userInfo?: { age?: string; gender?: string }
+  userInfo?: { age?: string; gender?: string },
 ): Promise<{
   success: boolean;
   simple_report: string;
@@ -147,7 +160,7 @@ export async function generateChatReport(
   } catch (error: any) {
     console.error("API Error:", error);
     throw new Error(
-      error.response?.data?.error || "리포트 생성 중 오류가 발생했습니다."
+      error.response?.data?.error || "리포트 생성 중 오류가 발생했습니다.",
     );
   }
 }
@@ -180,7 +193,7 @@ export async function getReports() {
     }
     // 다른 에러는 그대로 throw
     throw new Error(
-      error.response?.data?.error || "리포트 목록을 가져올 수 없습니다."
+      error.response?.data?.error || "리포트 목록을 가져올 수 없습니다.",
     );
   }
 }
@@ -195,7 +208,7 @@ export async function getReport(reportId: string) {
   } catch (error: any) {
     console.error("API Error:", error);
     throw new Error(
-      error.response?.data?.error || "리포트를 가져올 수 없습니다."
+      error.response?.data?.error || "리포트를 가져올 수 없습니다.",
     );
   }
 }
@@ -214,13 +227,13 @@ export async function conductAnalysis(reportId: string, responses: any[]) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
     console.error("API Error:", error);
     throw new Error(
-      error.response?.data?.error || "분석 세션을 시작할 수 없습니다."
+      error.response?.data?.error || "분석 세션을 시작할 수 없습니다.",
     );
   }
 }
@@ -243,14 +256,18 @@ export async function downloadReportPDF(reportId: string): Promise<void> {
     }
     // PDF 다운로드는 Content-Type을 설정하지 않음
 
-    console.log(`[downloadReportPDF] PDF 다운로드 시작: reportId=${reportId}, 토큰 존재=${!!token}`);
+    console.log(
+      `[downloadReportPDF] PDF 다운로드 시작: reportId=${reportId}, 토큰 존재=${!!token}`,
+    );
 
     const response = await fetch(`/api/reports/${reportId}/pdf`, {
       method: "GET",
       headers,
     });
 
-    console.log(`[downloadReportPDF] 응답 상태: ${response.status} ${response.statusText}`);
+    console.log(
+      `[downloadReportPDF] 응답 상태: ${response.status} ${response.statusText}`,
+    );
 
     if (!response.ok) {
       // 에러 응답이 JSON일 수도 있고 텍스트일 수도 있음
@@ -319,7 +336,7 @@ export async function downloadAdminReportPDF(reportId: string): Promise<void> {
 
 export async function saveCounselorAnswers(
   reportId: string,
-  answers: Record<number, string>
+  answers: Record<number, string>,
 ): Promise<void> {
   const pythonBackendUrl =
     process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -335,7 +352,7 @@ export async function saveCounselorAnswers(
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-      }
+      },
     );
 
     if (!response.data.success) {
@@ -346,7 +363,7 @@ export async function saveCounselorAnswers(
     throw new Error(
       error.response?.data?.error ||
         error.message ||
-        "답변 저장 중 오류가 발생했습니다."
+        "답변 저장 중 오류가 발생했습니다.",
     );
   }
 }
@@ -365,7 +382,7 @@ export async function submitContact(
   name: string,
   phone: string,
   childAge: string,
-  message: string
+  message: string,
 ): Promise<{ success: boolean; message: string; contact_id: string }> {
   try {
     const formData = new FormData();
@@ -384,7 +401,7 @@ export async function submitContact(
   } catch (error: any) {
     console.error("문의 API 오류:", error);
     throw new Error(
-      error.response?.data?.error || "문의 접수 중 오류가 발생했습니다."
+      error.response?.data?.error || "문의 접수 중 오류가 발생했습니다.",
     );
   }
 }
@@ -402,14 +419,14 @@ export async function getContacts(): Promise<{
   } catch (error: any) {
     console.error("문의 목록 API 오류:", error);
     throw new Error(
-      error.response?.data?.error || "문의 목록을 가져올 수 없습니다."
+      error.response?.data?.error || "문의 목록을 가져올 수 없습니다.",
     );
   }
 }
 
 export async function updateContactStatus(
   contactId: string,
-  status: string
+  status: string,
 ): Promise<{ success: boolean; contact: ContactInquiry }> {
   const pythonBackendUrl =
     process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -432,7 +449,7 @@ export async function updateContactStatus(
     throw new Error(
       error.response?.data?.error ||
         error.message ||
-        "문의 상태 업데이트 중 오류가 발생했습니다."
+        "문의 상태 업데이트 중 오류가 발생했습니다.",
     );
   }
 }
@@ -465,7 +482,7 @@ export interface CreateReservationRequest {
 }
 
 export async function createReservation(
-  data: CreateReservationRequest
+  data: CreateReservationRequest,
 ): Promise<{
   success: boolean;
   reservation: Reservation;
@@ -510,7 +527,10 @@ export async function createReservation(
     return response.data;
   } catch (error: any) {
     console.error("예약 생성 오류:", error);
-    const errorMessage = error.response?.data?.error || error.message || "예약 생성 중 오류가 발생했습니다.";
+    const errorMessage =
+      error.response?.data?.error ||
+      error.message ||
+      "예약 생성 중 오류가 발생했습니다.";
     throw new Error(errorMessage);
   }
 }
@@ -528,13 +548,13 @@ export async function getReservations(): Promise<{
   } catch (error: any) {
     console.error("예약 목록 조회 오류:", error);
     throw new Error(
-      error.response?.data?.error || "예약 목록을 가져올 수 없습니다."
+      error.response?.data?.error || "예약 목록을 가져올 수 없습니다.",
     );
   }
 }
 
 export async function getReservation(
-  reservationId: string
+  reservationId: string,
 ): Promise<{ success: boolean; reservation: Reservation }> {
   try {
     const token = await getAuthToken();
@@ -545,13 +565,13 @@ export async function getReservation(
   } catch (error: any) {
     console.error("예약 조회 오류:", error);
     throw new Error(
-      error.response?.data?.error || "예약을 가져올 수 없습니다."
+      error.response?.data?.error || "예약을 가져올 수 없습니다.",
     );
   }
 }
 
 export async function confirmDeposit(
-  reservationId: string
+  reservationId: string,
 ): Promise<{ success: boolean; reservation: Reservation; message: string }> {
   try {
     const token = await getAuthToken();
@@ -560,20 +580,20 @@ export async function confirmDeposit(
       {},
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
     console.error("입금 확인 오류:", error);
     throw new Error(
-      error.response?.data?.error || "입금 확인 중 오류가 발생했습니다."
+      error.response?.data?.error || "입금 확인 중 오류가 발생했습니다.",
     );
   }
 }
 
 export async function getPageContent(
   path: string,
-  language: string = "ko"
+  language: string = "ko",
 ): Promise<{
   success: boolean;
   contents?: Record<string, string>;
@@ -611,7 +631,7 @@ export interface CreatePaymentSessionResponse {
 }
 
 export async function createPaymentSession(
-  data: CreatePaymentSessionRequest
+  data: CreatePaymentSessionRequest,
 ): Promise<CreatePaymentSessionResponse> {
   try {
     const formData = new FormData();
@@ -633,14 +653,14 @@ export async function createPaymentSession(
           "Content-Type": "multipart/form-data",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-      }
+      },
     );
 
     return response.data;
   } catch (error: any) {
     console.error("결제 세션 생성 오류:", error);
     throw new Error(
-      error.response?.data?.error || "결제 세션 생성 중 오류가 발생했습니다."
+      error.response?.data?.error || "결제 세션 생성 중 오류가 발생했습니다.",
     );
   }
 }
@@ -653,7 +673,7 @@ export interface VerifyPaymentResponse {
 }
 
 export async function verifyPayment(
-  sessionId: string
+  sessionId: string,
 ): Promise<VerifyPaymentResponse> {
   try {
     const token = await getAuthToken();
@@ -663,14 +683,14 @@ export async function verifyPayment(
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-      }
+      },
     );
 
     return response.data;
   } catch (error: any) {
     console.error("결제 확인 오류:", error);
     throw new Error(
-      error.response?.data?.error || "결제 확인 중 오류가 발생했습니다."
+      error.response?.data?.error || "결제 확인 중 오류가 발생했습니다.",
     );
   }
 }
@@ -709,7 +729,7 @@ export async function getPayments(): Promise<{
   } catch (error: any) {
     console.error("결제 목록 조회 오류:", error);
     throw new Error(
-      error.response?.data?.error || "결제 목록 조회 중 오류가 발생했습니다."
+      error.response?.data?.error || "결제 목록 조회 중 오류가 발생했습니다.",
     );
   }
 }
@@ -733,7 +753,7 @@ export async function getPayment(paymentId: string): Promise<{
   } catch (error: any) {
     console.error("결제 조회 오류:", error);
     throw new Error(
-      error.response?.data?.error || "결제 조회 중 오류가 발생했습니다."
+      error.response?.data?.error || "결제 조회 중 오류가 발생했습니다.",
     );
   }
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Palette,
   Home,
@@ -18,6 +18,18 @@ import {
 export default function Navigation() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // 스크롤 이벤트 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setIsScrolled(scrollPosition > 10);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const navItems = [
     { href: "/", label: "홈", icon: Home },
@@ -41,17 +53,57 @@ export default function Navigation() {
     setIsMobileMenuOpen(false);
   };
 
+  // 스크롤 상태에 따른 스타일 값 (아이폰 스타일 글라스 효과)
+  const navStyle = {
+    backdropFilter: isScrolled
+      ? "blur(40px) saturate(200%)"
+      : "blur(30px) saturate(180%)",
+    WebkitBackdropFilter: isScrolled
+      ? "blur(40px) saturate(200%)"
+      : "blur(30px) saturate(180%)",
+    backgroundColor: isScrolled
+      ? "rgba(255, 255, 255, 0.8)"
+      : "rgba(255, 255, 255, 0.4)",
+    backgroundImage: isScrolled
+      ? "linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)"
+      : "linear-gradient(to bottom, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)",
+    boxShadow: isScrolled
+      ? `
+        0 8px 32px 0 rgba(31, 38, 135, 0.25),
+        0 2px 8px 0 rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+        inset 0 -1px 0 0 rgba(255, 255, 255, 0.2)
+      `
+      : `
+        0 4px 16px 0 rgba(31, 38, 135, 0.15),
+        0 1px 4px 0 rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+        inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)
+      `,
+    borderBottom: isScrolled
+      ? "1px solid rgba(255, 255, 255, 0.5)"
+      : "1px solid rgba(255, 255, 255, 0.3)",
+    borderTop: "1px solid rgba(255, 255, 255, 0.2)",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  };
+
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
+    <nav className="sticky top-0 z-50" style={navStyle}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* 로고 */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-pink-600 transition-colors"
+            className={`flex items-center gap-2 text-xl font-bold transition-colors ${
+              isScrolled
+                ? "text-gray-800 hover:text-pink-600"
+                : "text-white hover:text-pink-200"
+            }`}
             onClick={closeMobileMenu}
           >
-            <Palette className="w-6 h-6 text-pink-600" />
+            <Palette
+              className={`w-6 h-6 ${isScrolled ? "text-pink-600" : "text-pink-300"}`}
+            />
             <span className="hidden sm:inline">Analyist AI Agent</span>
             <span className="sm:hidden">미술교실</span>
           </Link>
@@ -68,10 +120,14 @@ export default function Navigation() {
                   className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${
                     isActive
                       ? "bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-pink-50 hover:text-pink-600"
+                      : isScrolled
+                        ? "text-gray-700 hover:bg-pink-50 hover:text-pink-600"
+                        : "text-white hover:bg-white/20 hover:text-pink-200"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon
+                    className={`w-4 h-4 ${isActive ? "" : isScrolled ? "text-gray-700" : "text-white"}`}
+                  />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -82,7 +138,11 @@ export default function Navigation() {
           <div className="md:hidden">
             <button
               onClick={toggleMobileMenu}
-              className="text-gray-700 hover:text-pink-600 transition-colors p-2 rounded-lg hover:bg-pink-50"
+              className={`transition-colors p-2 rounded-lg ${
+                isScrolled
+                  ? "text-gray-700 hover:text-pink-600 hover:bg-pink-50"
+                  : "text-white hover:text-pink-200 hover:bg-white/20"
+              }`}
               aria-label="메뉴 열기"
             >
               {isMobileMenuOpen ? (
@@ -101,7 +161,37 @@ export default function Navigation() {
           isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="px-4 pt-2 pb-4 space-y-2 bg-gradient-to-b from-white to-pink-50">
+        <div
+          className="px-4 pt-2 pb-4 space-y-2"
+          style={{
+            backdropFilter: isScrolled
+              ? "blur(40px) saturate(200%)"
+              : "blur(30px) saturate(180%)",
+            WebkitBackdropFilter: isScrolled
+              ? "blur(40px) saturate(200%)"
+              : "blur(30px) saturate(180%)",
+            backgroundColor: isScrolled
+              ? "rgba(255, 255, 255, 0.8)"
+              : "rgba(255, 255, 255, 0.4)",
+            backgroundImage: isScrolled
+              ? "linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)"
+              : "linear-gradient(to bottom, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)",
+            boxShadow: isScrolled
+              ? `
+                0 8px 32px 0 rgba(31, 38, 135, 0.25),
+                0 2px 8px 0 rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+                inset 0 -1px 0 0 rgba(255, 255, 255, 0.2)
+              `
+              : `
+                0 4px 16px 0 rgba(31, 38, 135, 0.15),
+                0 1px 4px 0 rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+                inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)
+              `,
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -113,10 +203,14 @@ export default function Navigation() {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive
                     ? "bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white shadow-lg transform scale-[1.02]"
-                    : "text-gray-700 hover:bg-pink-100 hover:text-pink-600 active:scale-95"
+                    : isScrolled
+                      ? "text-gray-700 hover:bg-pink-100 hover:text-pink-600 active:scale-95"
+                      : "text-white hover:bg-white/20 hover:text-pink-200 active:scale-95"
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon
+                  className={`w-5 h-5 ${isActive ? "" : isScrolled ? "text-gray-700" : "text-white"}`}
+                />
                 <span className="font-medium">{item.label}</span>
               </Link>
             );
@@ -127,7 +221,11 @@ export default function Navigation() {
             <Link
               href="/admin"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-all duration-200 mt-4 border-t border-gray-200 pt-4"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 mt-4 border-t pt-4 ${
+                isScrolled
+                  ? "text-gray-500 hover:bg-gray-100 hover:text-gray-700 border-gray-200"
+                  : "text-white/80 hover:bg-white/20 hover:text-white border-white/20"
+              }`}
             >
               <FileText className="w-5 h-5" />
               <span className="font-medium">관리자</span>
@@ -136,7 +234,7 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* 데스크톱 관리자 링크 */}
+      {/* 데스크톱 관리자 링크
       {!isAdminPage && (
         <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2">
           <Link
@@ -147,7 +245,7 @@ export default function Navigation() {
             관리자
           </Link>
         </div>
-      )}
+      )} */}
     </nav>
   );
 }

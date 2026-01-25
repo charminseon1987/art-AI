@@ -47,9 +47,18 @@ allowed_origins = [
 ]
 
 # 프로덕션 프론트엔드 URL 추가 (환경 변수에서 읽기)
+# Cloudflare Pages URL도 여기에 포함됩니다
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     allowed_origins.append(frontend_url)
+
+# Cloudflare Pages 도메인 패턴 추가 (환경 변수로 설정 가능)
+cloudflare_pages_url = os.getenv("CLOUDFLARE_PAGES_URL")
+if cloudflare_pages_url:
+    allowed_origins.append(cloudflare_pages_url)
+
+# Cloudflare Tunnel을 통한 접근도 허용 (필요시)
+# Tunnel을 사용하는 경우, Tunnel 도메인도 CORS에 추가해야 합니다
 
 app.add_middleware(
     CORSMiddleware,

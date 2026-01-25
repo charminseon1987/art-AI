@@ -714,6 +714,11 @@ export default function Home() {
                     환불 규정
                   </Link>
                 </li>
+                <li>
+                  <Link href="/cookies" className="hover:text-pink-400">
+                    쿠키 정책
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

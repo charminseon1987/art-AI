@@ -58,7 +58,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
         if (currentLimit.image_analysis_remaining <= 0) {
           alert(
-            "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+            "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.",
           );
           return;
         }
@@ -69,7 +69,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     try {
       const emotionValue =
         emotion && emotion !== "선택 안함" ? emotion : undefined;
-      
+
       console.log("[ImageUpload] 인증 후 분석 시작:", {
         fileName: file.name,
         fileSize: file.size,
@@ -127,26 +127,28 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         stack: error.stack,
         response: error.response,
       });
-      
+
       // 에러 메시지 추출
       let errorMessage = "분석 중 오류가 발생했습니다.";
-      
+
       if (error.response?.data) {
         const errorData = error.response.data;
-        if (typeof errorData === 'object') {
+        if (typeof errorData === "object") {
           errorMessage = errorData.error || errorData.message || errorMessage;
           if (errorData.error_type) {
             errorMessage += ` (${errorData.error_type})`;
           }
-        } else if (typeof errorData === 'string') {
+        } else if (typeof errorData === "string") {
           errorMessage = errorData;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       // 사용자에게 명확한 메시지 표시
-      alert(`분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`);
+      alert(
+        `분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`,
+      );
     } finally {
       setUploading(false);
       setProgress(0);
@@ -270,12 +272,12 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
                     const compressedFile = new File(
                       [compressedBlob],
                       file.name,
-                      { type: file.type }
+                      { type: file.type },
                     );
                     resolve(compressedFile);
                   },
                   file.type,
-                  quality
+                  quality,
                 );
               } else {
                 const compressedFile = new File([blob], file.name, {
@@ -285,7 +287,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
               }
             },
             file.type,
-            quality
+            quality,
           );
         };
         img.onerror = () => reject(new Error("이미지를 로드할 수 없습니다."));
@@ -302,7 +304,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     // 사용 횟수 확인
     if (usageLimit && usageLimit.image_analysis_remaining <= 0) {
       alert(
-        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다."
+        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.",
       );
       return;
     }
@@ -313,7 +315,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
     try {
       const emotion =
         userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
-      
+
       console.log("[ImageUpload] 분석 시작:", {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
@@ -371,26 +373,28 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         stack: error.stack,
         response: error.response,
       });
-      
+
       // 에러 메시지 추출
       let errorMessage = "분석 중 오류가 발생했습니다.";
-      
+
       if (error.response?.data) {
         const errorData = error.response.data;
-        if (typeof errorData === 'object') {
+        if (typeof errorData === "object") {
           errorMessage = errorData.error || errorData.message || errorMessage;
           if (errorData.error_type) {
             errorMessage += ` (${errorData.error_type})`;
           }
-        } else if (typeof errorData === 'string') {
+        } else if (typeof errorData === "string") {
           errorMessage = errorData;
         }
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       // 사용자에게 명확한 메시지 표시
-      alert(`분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`);
+      alert(
+        `분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`,
+      );
     } finally {
       setUploading(false);
       setProgress(0);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLocale } from 'next-intl';
 import {
   Upload,
   MessageSquare,
@@ -27,15 +28,10 @@ import {
 import ImageUpload from "@/components/ImageUpload";
 import ChatInterface from "@/components/ChatInterface";
 import ReportDisplay from "@/components/ReportDisplay";
-import {
-  generateChatReport,
-  downloadReportPDF,
-  createReservation,
-  type CreateReservationRequest,
-  getReport,
-} from "@/lib/api";
+import { generateChatReport, downloadReportPDF, createReservation, type CreateReservationRequest, getReport } from "@/lib/api";
 
 export default function CounselingPage() {
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [reportData, setReportData] = useState<any>(null);
@@ -43,7 +39,7 @@ export default function CounselingPage() {
   const [simpleReport, setSimpleReport] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
-
+  
   // 예약 관련 상태
   const [reservationDate, setReservationDate] = useState<string>("");
   const [reservationTime, setReservationTime] = useState<string>("");
@@ -53,7 +49,7 @@ export default function CounselingPage() {
   const [notes, setNotes] = useState<string>("");
   const [creatingReservation, setCreatingReservation] = useState(false);
   const [reservationResult, setReservationResult] = useState<any>(null);
-
+  
   // 공유하기 관련 상태
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -102,7 +98,7 @@ export default function CounselingPage() {
   const shareToKakao = () => {
     const url = getShareUrl();
     if (!url) return;
-
+    
     // 카카오톡 링크 공유 (간단한 방법)
     const kakaoUrl = `https://story.kakao.com/share?url=${encodeURIComponent(url)}`;
     window.open(kakaoUrl, "_blank", "width=600,height=600");
@@ -112,7 +108,7 @@ export default function CounselingPage() {
   const shareToFacebook = () => {
     const url = getShareUrl();
     if (!url) return;
-
+    
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
     window.open(facebookUrl, "_blank", "width=600,height=400");
   };
@@ -121,7 +117,7 @@ export default function CounselingPage() {
   const shareToTwitter = () => {
     const url = getShareUrl();
     if (!url) return;
-
+    
     const text = encodeURIComponent(`${shareTitle} - ${shareDescription}`);
     const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${text}`;
     window.open(twitterUrl, "_blank", "width=600,height=400");
@@ -131,7 +127,7 @@ export default function CounselingPage() {
   const shareToLinkedIn = () => {
     const url = getShareUrl();
     if (!url) return;
-
+    
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
     window.open(linkedInUrl, "_blank", "width=600,height=400");
   };
@@ -251,10 +247,11 @@ export default function CounselingPage() {
                     reportData.report.id,
                     responses,
                     userInfo,
+                    locale
                   );
                   // 사용자용 간단 리포트 표시
                   setSimpleReport(
-                    result.simple_report || result.report_content,
+                    result.simple_report || result.report_content
                   );
 
                   // 전체 리포트 데이터 다시 가져오기 (이미지 및 각 에이전트 결과 포함)
@@ -315,8 +312,8 @@ export default function CounselingPage() {
                         reportData.report.image_metadata.image_url
                           ? reportData.report.image_metadata.image_url
                           : reportData.report.image_metadata.base64
-                            ? `data:image/jpeg;base64,${reportData.report.image_metadata.base64}`
-                            : ""
+                          ? `data:image/jpeg;base64,${reportData.report.image_metadata.base64}`
+                          : ""
                       }
                       alt="업로드된 그림"
                       className="max-w-full h-auto rounded-lg shadow-md object-contain"
@@ -356,7 +353,7 @@ export default function CounselingPage() {
                                   >
                                     {color}
                                   </span>
-                                ),
+                                )
                               )}
                             </div>
                           </div>
@@ -376,7 +373,7 @@ export default function CounselingPage() {
                                   >
                                     {shape}
                                   </span>
-                                ),
+                                )
                               )}
                             </div>
                           </div>
@@ -401,7 +398,7 @@ export default function CounselingPage() {
                               {reportData.report.observation.details.map(
                                 (detail: string, idx: number) => (
                                   <li key={idx}>{detail}</li>
-                                ),
+                                )
                               )}
                             </ul>
                           </div>
@@ -444,7 +441,7 @@ export default function CounselingPage() {
                                   >
                                     {emotion}
                                   </span>
-                                ),
+                                )
                               )}
                             </div>
                           </div>
@@ -478,7 +475,7 @@ export default function CounselingPage() {
                                   >
                                     {element}
                                   </span>
-                                ),
+                                )
                               )}
                             </div>
                           </div>
@@ -523,7 +520,7 @@ export default function CounselingPage() {
                           // ==== 섹션 구분자 처리 (먼저 처리)
                           html = html.replace(
                             /====\s*종합결론 전문가 종합 평가\s*====/g,
-                            '<div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2><div class="space-y-4 prose prose-lg max-w-none">',
+                            '<div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2><div class="space-y-4 prose prose-lg max-w-none">'
                           );
 
                           // 대괄호로 감싼 섹션 제목 제거 (가독성 개선)
@@ -536,7 +533,7 @@ export default function CounselingPage() {
                           // 문단 형식으로 변환 (빈 줄로 구분된 텍스트를 <p> 태그로)
                           // 먼저 섹션 헤더 이후의 내용을 추출
                           const sectionMatch = html.match(
-                            /종합결론 전문가 종합 평가<\/h2><div class="space-y-4 prose prose-lg max-w-none">([\s\S]*?)(?=<\/div><\/div>|$)/,
+                            /종합결론 전문가 종합 평가<\/h2><div class="space-y-4 prose prose-lg max-w-none">([\s\S]*?)(?=<\/div><\/div>|$)/
                           );
                           if (sectionMatch) {
                             let content = sectionMatch[1];
@@ -544,7 +541,7 @@ export default function CounselingPage() {
                             // 대괄호 제목 제거
                             content = content.replace(
                               /\[\s*[^\]]+\s*\]\s*\n*/g,
-                              "",
+                              ""
                             );
 
                             // 빈 줄로 구분된 문단을 <p> 태그로 변환
@@ -553,19 +550,19 @@ export default function CounselingPage() {
                               .map((p: string) => p.trim())
                               .filter(
                                 (p: string) =>
-                                  p.length > 0 && !p.match(/^\[.*\]$/),
+                                  p.length > 0 && !p.match(/^\[.*\]$/)
                               );
 
                             const formattedParagraphs = paragraphs
                               .map(
                                 (p: string) =>
-                                  `<p class="mb-4 text-gray-800 leading-relaxed text-base">${p}</p>`,
+                                  `<p class="mb-4 text-gray-800 leading-relaxed text-base">${p}</p>`
                               )
                               .join("");
 
                             html = html.replace(
                               /(종합결론 전문가 종합 평가<\/h2><div class="space-y-4 prose prose-lg max-w-none">)([\s\S]*?)(?=<\/div><\/div>|$)/,
-                              `$1${formattedParagraphs}`,
+                              `$1${formattedParagraphs}`
                             );
                           }
 
@@ -710,7 +707,7 @@ export default function CounselingPage() {
                       await downloadReportPDF(reportData.report.id);
                     } catch (error: any) {
                       alert(
-                        error.message || "PDF 다운로드 중 오류가 발생했습니다.",
+                        error.message || "PDF 다운로드 중 오류가 발생했습니다."
                       );
                     }
                   }}
@@ -746,11 +743,11 @@ export default function CounselingPage() {
                   >
                     <X className="w-6 h-6" />
                   </button>
-
+                  
                   <h3 className="text-2xl font-bold text-gray-800 mb-6">
                     공유하기
                   </h3>
-
+                  
                   <div className="space-y-3">
                     {/* URL 복사 */}
                     <button
@@ -854,8 +851,7 @@ export default function CounselingPage() {
                 </p>
                 <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
                   <p className="text-yellow-800 text-xs">
-                    ⚠️ 입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수
-                    있습니다.
+                    ⚠️ 입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수 있습니다.
                   </p>
                 </div>
               </div>
@@ -885,16 +881,7 @@ export default function CounselingPage() {
                   예약 시간
                 </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {[
-                    "10:00",
-                    "11:00",
-                    "12:00",
-                    "13:00",
-                    "14:00",
-                    "15:00",
-                    "16:00",
-                    "17:00",
-                  ].map((time) => (
+                  {["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"].map((time) => (
                     <button
                       key={time}
                       type="button"
@@ -975,13 +962,7 @@ export default function CounselingPage() {
               <div className="flex gap-4">
                 <button
                   onClick={async () => {
-                    if (
-                      !reservationDate ||
-                      !reservationTime ||
-                      !childName ||
-                      !childAge ||
-                      !parentPhone
-                    ) {
+                    if (!reservationDate || !reservationTime || !childName || !childAge || !parentPhone) {
                       alert("필수 정보를 모두 입력해주세요.");
                       return;
                     }
@@ -1001,9 +982,7 @@ export default function CounselingPage() {
                       setReservationResult(result);
                       setStep(5);
                     } catch (error: any) {
-                      alert(
-                        error.message || "예약 생성 중 오류가 발생했습니다.",
-                      );
+                      alert(error.message || "예약 생성 중 오류가 발생했습니다.");
                     } finally {
                       setCreatingReservation(false);
                     }
@@ -1046,34 +1025,13 @@ export default function CounselingPage() {
             </div>
 
             <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg mb-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                예약 정보
-              </h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-4">예약 정보</h3>
               <div className="space-y-2 text-gray-700">
-                <p>
-                  <span className="font-semibold">예약 번호:</span>{" "}
-                  {reservationResult.reservation.id.substring(0, 8)}
-                </p>
-                <p>
-                  <span className="font-semibold">예약 날짜:</span>{" "}
-                  {new Date(
-                    reservationResult.reservation.reservation_date,
-                  ).toLocaleDateString("ko-KR")}
-                </p>
-                <p>
-                  <span className="font-semibold">예약 시간:</span>{" "}
-                  {reservationResult.reservation.reservation_time.substring(
-                    0,
-                    5,
-                  )}
-                </p>
-                <p>
-                  <span className="font-semibold">아이 이름:</span>{" "}
-                  {reservationResult.reservation.child_name}
-                </p>
-                <p>
-                  <span className="font-semibold">상태:</span> 입금 대기 중
-                </p>
+                <p><span className="font-semibold">예약 번호:</span> {reservationResult.reservation.id.substring(0, 8)}</p>
+                <p><span className="font-semibold">예약 날짜:</span> {new Date(reservationResult.reservation.reservation_date).toLocaleDateString("ko-KR")}</p>
+                <p><span className="font-semibold">예약 시간:</span> {reservationResult.reservation.reservation_time.substring(0, 5)}</p>
+                <p><span className="font-semibold">아이 이름:</span> {reservationResult.reservation.child_name}</p>
+                <p><span className="font-semibold">상태:</span> 입금 대기 중</p>
               </div>
             </div>
 
@@ -1083,9 +1041,7 @@ export default function CounselingPage() {
               </h3>
               <div className="space-y-4">
                 <div className="bg-white p-5 rounded-lg border-2 border-blue-200">
-                  <p className="text-sm text-gray-600 mb-2 font-semibold">
-                    입금 계좌
-                  </p>
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 계좌</p>
                   <p className="text-2xl font-bold text-gray-900 mb-1">
                     {reservationResult.deposit_info.bank_name}
                   </p>
@@ -1094,22 +1050,15 @@ export default function CounselingPage() {
                   </p>
                 </div>
                 <div className="bg-white p-5 rounded-lg border-2 border-green-200">
-                  <p className="text-sm text-gray-600 mb-2 font-semibold">
-                    입금 금액
-                  </p>
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 금액</p>
                   <p className="text-3xl font-bold text-green-600">
                     {reservationResult.deposit_info.amount.toLocaleString()}원
                   </p>
                 </div>
                 <div className="bg-white p-5 rounded-lg border-2 border-red-200">
-                  <p className="text-sm text-gray-600 mb-2 font-semibold">
-                    입금 기한
-                  </p>
+                  <p className="text-sm text-gray-600 mb-2 font-semibold">입금 기한</p>
                   <p className="text-xl font-bold text-red-600">
-                    {new Date(
-                      reservationResult.deposit_info.deadline,
-                    ).toLocaleString("ko-KR")}
-                    까지
+                    {new Date(reservationResult.deposit_info.deadline).toLocaleString("ko-KR")}까지
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
                     (예약 접수 후 5시간 이내)
@@ -1121,18 +1070,9 @@ export default function CounselingPage() {
                   ⚠️ 중요 안내
                 </p>
                 <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
-                  <li>
-                    입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수
-                    있습니다.
-                  </li>
-                  <li>
-                    입금 시 예약 번호를 메모란에 기재해주시면 확인이 더
-                    빠릅니다.
-                  </li>
-                  <li>
-                    입금 확인은 관리자가 수동으로 진행하며, 확인까지 시간이 걸릴
-                    수 있습니다.
-                  </li>
+                  <li>입금 기한 내에 입금이 확인되지 않으면 예약이 취소될 수 있습니다.</li>
+                  <li>입금 시 예약 번호를 메모란에 기재해주시면 확인이 더 빠릅니다.</li>
+                  <li>입금 확인은 관리자가 수동으로 진행하며, 확인까지 시간이 걸릴 수 있습니다.</li>
                   <li>입금 확인 완료 후 예약이 확정되면 상태가 변경됩니다.</li>
                 </ul>
               </div>
@@ -1146,9 +1086,8 @@ export default function CounselingPage() {
                     <span>ℹ️</span> 안내사항
                   </p>
                   <p className="leading-relaxed">
-                    입금 확인은 관리자가 수동으로 진행합니다. 입금 완료 후
-                    예약이 확정됩니다. 입금 확인까지 시간이 걸릴 수 있으니 양해
-                    부탁드립니다.
+                    입금 확인은 관리자가 수동으로 진행합니다. 입금 완료 후 예약이 확정됩니다.
+                    입금 확인까지 시간이 걸릴 수 있으니 양해 부탁드립니다.
                   </p>
                 </div>
               </div>

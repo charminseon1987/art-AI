@@ -24,9 +24,21 @@ const nextConfig = {
         hostname: "prod.spline.design",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.pages.dev",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.cloudflare.com",
+        pathname: "/**",
+      },
       // 다른 프로덕션 도메인 추가 시 여기에 추가
     ],
   },
+  // Cloudflare Pages 배포를 위한 설정
+  output: "standalone",
 };
 
 module.exports = nextConfig;
