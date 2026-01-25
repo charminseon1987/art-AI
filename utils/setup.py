@@ -7,6 +7,7 @@ def setup_directories():
     directories = [
         "data/reports",
         "data/metadata",
+        "prompts/ko",
         ".streamlit"
     ]
     

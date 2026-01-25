@@ -103,6 +103,10 @@ export async function analyzeImage(
             errorData.traceback,
           );
         }
+        // 에러 타입이 있으면 메시지에 포함
+        if (errorData?.error_type) {
+          errorMessage = `${errorMessage} (타입: ${errorData.error_type})`;
+        }
       }
 
       throw new Error(errorMessage);

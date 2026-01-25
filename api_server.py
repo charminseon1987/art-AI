@@ -199,12 +199,16 @@ async def analyze_image(
             ai_error_trace = traceback.format_exc()
             print(f"[analyze-image] AI 분석 중 에러 발생:")
             print(ai_error_trace)
+            # 개발 환경에서는 상세한 트레이스백 포함
+            error_detail = {
+                "error": f"AI 분석 중 오류가 발생했습니다: {str(ai_error)}",
+                "error_type": type(ai_error).__name__
+            }
+            if os.getenv("DEBUG", "false").lower() == "true":
+                error_detail["traceback"] = ai_error_trace
             return JSONResponse(
                 status_code=500,
-                content={
-                    "error": f"AI 분석 중 오류가 발생했습니다: {str(ai_error)}",
-                    "error_type": type(ai_error).__name__
-                }
+                content=error_detail
             )
         
         # 메타데이터 저장 (base64 이미지 포함)
@@ -270,13 +274,16 @@ async def analyze_image(
         error_trace = traceback.format_exc()
         print(f"[analyze-image] 에러 발생:")
         print(error_trace)
+        error_detail = {
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
+        # 개발 환경에서는 상세한 트레이스백 포함
+        if os.getenv("DEBUG", "false").lower() == "true":
+            error_detail["traceback"] = error_trace
         return JSONResponse(
             status_code=500,
-            content={
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "traceback": error_trace if os.getenv("DEBUG", "false").lower() == "true" else None
-            }
+            content=error_detail
         )
 
 

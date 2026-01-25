@@ -327,7 +327,9 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       // 응답에서 success가 false이고 error가 있으면 사용 횟수 초과 메시지
       if (data.success === false && data.error) {
         console.error("[ImageUpload] 분석 실패:", data.error);
-        alert(data.error);
+        // 에러 메시지를 더 명확하게 표시
+        const errorMsg = data.error || "알 수 없는 오류가 발생했습니다.";
+        alert(`분석 중 오류가 발생했습니다.\n\n${errorMsg}\n\n자세한 내용은 브라우저 콘솔을 확인하세요.`);
         // 사용 횟수 다시 조회
         const response = await fetch("/api/usage-limits");
         if (response.ok) {

@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
     console.log(`[analyze-image] 파일명: ${file.name}, 크기: ${file.size} bytes`);
     console.log(`[analyze-image] 감정: ${emotion || "없음"}`);
     console.log(`[analyze-image] 토큰 존재: ${token ? "예" : "아니오"}`);
+    
+    // 백엔드 URL이 localhost인 경우 서버 실행 여부 확인 안내
+    if (pythonBackendUrl.includes("localhost") || pythonBackendUrl.includes("127.0.0.1")) {
+      console.log(`[analyze-image] 로컬 백엔드 사용 중: ${pythonBackendUrl}`);
+      console.log(`[analyze-image] 백엔드 서버가 실행 중인지 확인하세요: python api_server.py 또는 uvicorn api_server:app --reload`);
+    }
 
     const backendFormData = new FormData();
     backendFormData.append("file", file);
@@ -51,10 +57,21 @@ export async function POST(request: NextRequest) {
         stack: fetchError?.stack,
         url: `${pythonBackendUrl}/api/analyze-image`,
       });
+      
+      // 연결 실패 원인에 따른 상세 메시지
+      let errorMessage = `백엔드 서버에 연결할 수 없습니다: ${fetchError?.message || "연결 실패"}`;
+      
+      if (pythonBackendUrl.includes("localhost") || pythonBackendUrl.includes("127.0.0.1")) {
+        errorMessage += "\n\n로컬 백엔드 서버가 실행 중인지 확인하세요:\n- 터미널에서 'python api_server.py' 또는 'uvicorn api_server:app --reload' 실행";
+      } else {
+        errorMessage += `\n\n백엔드 URL: ${pythonBackendUrl}`;
+        errorMessage += "\n환경 변수 PYTHON_BACKEND_URL 또는 NEXT_PUBLIC_PYTHON_BACKEND_URL을 확인하세요.";
+      }
+      
       return NextResponse.json(
         { 
           success: false,
-          error: `백엔드 서버에 연결할 수 없습니다: ${fetchError?.message || "연결 실패"}` 
+          error: errorMessage
         },
         { status: 500 }
       );
@@ -92,16 +109,23 @@ export async function POST(request: NextRequest) {
     // 백엔드가 200 OK로 에러를 반환하는 경우도 처리
     if (!response.ok || (responseData.success === false)) {
       const errorMessage = responseData.error || responseData.message || `백엔드 API 호출 실패 (${response.status})`;
+      const errorType = responseData.error_type || "UnknownError";
       console.error(`[analyze-image] 백엔드 에러:`, {
         status: response.status,
         statusText: response.statusText,
         error: errorMessage,
+        errorType: errorType,
         responseData,
       });
       return NextResponse.json(
         { 
           success: false,
-          error: errorMessage 
+          error: errorMessage,
+          error_type: errorType,
+          // 개발 환경에서만 상세 정보 포함
+          ...(process.env.NODE_ENV === "development" && responseData.traceback ? {
+            traceback: responseData.traceback
+          } : {})
         },
         { status: response.ok ? 200 : response.status }
       );
