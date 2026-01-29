@@ -1,0 +1,38 @@
+# Cloudflare Tunnel 설정 파일
+# 이 파일은 Railway 또는 로컬 서버에서 cloudflared를 실행할 때 사용됩니다.
+# 
+# 사용 방법:
+# 1. Cloudflare 대시보드에서 Tunnel 생성
+# 2. 인증 토큰 복사
+# 3. cloudflared service install <token> 실행
+# 4. 이 설정 파일을 /etc/cloudflared/config.yml 또는 ~/.cloudflared/config.yml에 배치
+# 5. 또는 cloudflared tunnel --config cloudflare-tunnel-config.yml run <tunnel-name> 실행
+
+tunnel: <YOUR_TUNNEL_ID>
+credentials-file: /etc/cloudflared/<YOUR_TUNNEL_ID>.json
+
+# 인그레스 규칙: 요청을 백엔드로 라우팅
+ingress:
+  # API 엔드포인트는 백엔드로 전달
+  - hostname: api.yourdomain.com  # 또는 *.pages.dev 도메인
+    service: http://localhost:8000
+    originRequest:
+      # 타임아웃 설정
+      connectTimeout: 30s
+      tcpKeepAlive: 30s
+      # HTTP 헤더 설정
+      httpHostHeader: api.yourdomain.com
+      # 원본 서버 인증서 검증 비활성화 (로컬 개발용)
+      noHappyEyeballs: false
+      # Keep-alive 연결
+      keepAliveConnections: 100
+      keepAliveTimeout: 90s
+
+  # 모든 다른 요청은 404
+  - service: http_status:404
+
+# 로그 설정
+loglevel: info
+
+# 메트릭 설정 (선택사항)
+metrics: 0.0.0.0:9090

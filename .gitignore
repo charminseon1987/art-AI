@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.production
+
+# Data
+data/
+data/*.json
+*.pdf
+
+# 배포 설정 파일은 포함
+!railway.json
+!package.json
+!package-lock.json
+!pnpm-lock.yaml
+!tsconfig.json
+
+# Streamlit
+.streamlit/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ============ Node.js / Next.js 추가 ============
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log
+
+# Next.js
+.next/
+out/
+.vercel/
+
+# Build outputs
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*

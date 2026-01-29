@@ -1,0 +1,1641 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  FileText,
+  Download,
+  Eye,
+  Search,
+  Filter,
+  Image as ImageIcon,
+  LogOut,
+} from "lucide-react";
+import {
+  getReports,
+  getReport,
+  downloadAdminReportPDF,
+  saveCounselorAnswers,
+  getContacts,
+  updateContactStatus,
+  ContactInquiry,
+  getReservations,
+  confirmDeposit,
+  type Reservation,
+} from "@/lib/api";
+import { getCurrentUser, isAdminOrSupervisor } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
+
+interface Report {
+  id: string;
+  created_at: string;
+  user_emotion: string | null;
+}
+
+// 문의 상태 표시 헬퍼 함수
+const getStatusLabel = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    pending: "대기중",
+    consultation_scheduled: "상담 예약",
+    consultation_completed: "상담 완료",
+    class_scheduled: "수업예약",
+    contacted: "연락완료",
+    completed: "처리완료",
+  };
+  return statusMap[status] || status;
+};
+
+const getStatusColor = (status: string): string => {
+  const colorMap: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    consultation_scheduled: "bg-blue-100 text-blue-800",
+    consultation_completed: "bg-purple-100 text-purple-800",
+    class_scheduled: "bg-green-100 text-green-800",
+    contacted: "bg-indigo-100 text-indigo-800",
+    completed: "bg-gray-100 text-gray-800",
+  };
+  return colorMap[status] || "bg-gray-100 text-gray-800";
+};
+
+export default function AdminPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"reports" | "contacts" | "reservations">("reports");
+  const [reports, setReports] = useState<Report[]>([]);
+  const [contacts, setContacts] = useState<ContactInquiry[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactInquiry | null>(
+    null
+  );
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [contactSearchTerm, setContactSearchTerm] = useState("");
+  const [reservationSearchTerm, setReservationSearchTerm] = useState("");
+  const [counselorAnswers, setCounselorAnswers] = useState<
+    Record<number, string>
+  >({});
+  const [savingAnswers, setSavingAnswers] = useState(false);
+  const [answersSaved, setAnswersSaved] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    // Supabase 인증 확인
+    const checkAuth = async () => {
+      try {
+        // 환경 변수 확인
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+        if (!supabaseUrl || supabaseUrl === "https://placeholder.supabase.co") {
+          console.warn(
+            "Supabase가 설정되지 않았습니다. 개발 모드에서는 기존 인증 방식을 사용합니다."
+          );
+          // 기존 sessionStorage 방식으로 폴백
+          const isAuthenticated =
+            sessionStorage.getItem("admin_authenticated") === "true";
+          if (!isAuthenticated) {
+            router.push("/admin/login");
+            return;
+          }
+          setAuthenticated(true);
+          loadReports();
+          loadContacts();
+          setCheckingAuth(false);
+          return;
+        }
+
+        const user = await getCurrentUser();
+
+        if (!user || !isAdminOrSupervisor(user.role)) {
+          router.push("/admin/login");
+          return;
+        }
+
+        setAuthenticated(true);
+        loadReports();
+        loadContacts();
+        loadReservations();
+      } catch (error) {
+        console.error("인증 확인 오류:", error);
+        router.push("/admin/login");
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      const data = await getReports();
+      if (data.success) {
+        setReports(data.reports || []);
+      }
+    } catch (error: any) {
+      console.error("리포트 로드 오류:", error);
+      alert("리포트를 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      setLoading(true);
+      const data = await getContacts();
+      if (data.success) {
+        setContacts(data.contacts || []);
+      }
+    } catch (error: any) {
+      console.error("문의 목록 로드 오류:", error);
+      alert("문의 목록을 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadReservations = async () => {
+    try {
+      setLoading(true);
+      const data = await getReservations();
+      if (data.success) {
+        setReservations(data.reservations || []);
+      }
+    } catch (error: any) {
+      console.error("예약 목록 로드 오류:", error);
+      alert("예약 목록을 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDeposit = async (reservationId: string) => {
+    if (!confirm("입금 확인을 완료하시겠습니까?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await confirmDeposit(reservationId);
+      
+      if (result.success) {
+        alert("입금 확인이 완료되었습니다.");
+        await loadReservations();
+        if (selectedReservation?.id === reservationId) {
+          setSelectedReservation(result.reservation);
+        }
+      }
+    } catch (error: any) {
+      alert("입금 확인 실패: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadReportDetail = async (reportId: string) => {
+    try {
+      setLoading(true);
+      // 리포트 변경 시 상태 초기화
+      setCounselorAnswers({});
+      setAnswersSaved(false);
+
+      const data = await getReport(reportId);
+      if (data.success) {
+        setSelectedReport(data.report);
+        // 기존 상담사 답변 불러오기
+        if (data.report.image_metadata?.counselor_answers) {
+          setCounselorAnswers(data.report.image_metadata.counselor_answers);
+          // 저장된 답변이 있으면 비활성화 상태로 설정
+          const hasAnswers =
+            Object.keys(data.report.image_metadata.counselor_answers).length >
+            0;
+          setAnswersSaved(hasAnswers);
+        } else {
+          setCounselorAnswers({});
+          setAnswersSaved(false);
+        }
+      }
+    } catch (error: any) {
+      console.error("리포트 상세 로드 오류:", error);
+      alert("리포트를 불러올 수 없습니다: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredReports = reports.filter((report) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      report.id.toLowerCase().includes(searchLower) ||
+      report.created_at.toLowerCase().includes(searchLower) ||
+      (report.user_emotion &&
+        report.user_emotion.toLowerCase().includes(searchLower))
+    );
+  });
+
+  const filteredContacts = contacts.filter((contact) => {
+    if (!contactSearchTerm) return true;
+    const searchLower = contactSearchTerm.toLowerCase();
+    return (
+      contact.name.toLowerCase().includes(searchLower) ||
+      contact.phone.toLowerCase().includes(searchLower) ||
+      contact.child_age.toLowerCase().includes(searchLower) ||
+      contact.message.toLowerCase().includes(searchLower) ||
+      contact.status.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const filteredReservations = reservations.filter((reservation) => {
+    if (!reservationSearchTerm) return true;
+    const searchLower = reservationSearchTerm.toLowerCase();
+    return (
+      reservation.child_name.toLowerCase().includes(searchLower) ||
+      reservation.parent_phone.toLowerCase().includes(searchLower) ||
+      reservation.reservation_date.toLowerCase().includes(searchLower) ||
+      reservation.status.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const getReservationStatusLabel = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      pending_deposit: "입금 대기",
+      deposit_paid: "입금 완료",
+      deposit_confirmed: "예약 확정",
+      in_progress: "진행 중",
+      completed: "완료",
+      cancelled: "취소",
+    };
+    return statusMap[status] || status;
+  };
+
+  const getReservationStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      pending_deposit: "bg-yellow-100 text-yellow-800",
+      deposit_paid: "bg-blue-100 text-blue-800",
+      deposit_confirmed: "bg-green-100 text-green-800",
+      in_progress: "bg-purple-100 text-purple-800",
+      completed: "bg-gray-100 text-gray-800",
+      cancelled: "bg-red-100 text-red-800",
+    };
+    return colorMap[status] || "bg-gray-100 text-gray-800";
+  };
+
+  const handleContactStatusChange = async (
+    contactId: string,
+    status: string
+  ) => {
+    try {
+      setLoading(true);
+
+      // 즉시 UI 업데이트 (낙관적 업데이트)
+      if (selectedContact?.id === contactId) {
+        setSelectedContact({ ...selectedContact, status });
+      }
+
+      // 목록도 즉시 업데이트
+      setContacts((prevContacts) =>
+        prevContacts.map((c) => (c.id === contactId ? { ...c, status } : c))
+      );
+
+      // 서버에 상태 업데이트 요청
+      const result = await updateContactStatus(contactId, status);
+
+      // 서버에서 반환된 최신 데이터로 업데이트
+      if (result.success && result.contact) {
+        if (selectedContact?.id === contactId) {
+          setSelectedContact(result.contact);
+        }
+        // 목록도 업데이트
+        setContacts((prevContacts) =>
+          prevContacts.map((c) => (c.id === contactId ? result.contact : c))
+        );
+      }
+    } catch (error: any) {
+      alert("상태 업데이트 실패: " + error.message);
+      // 실패 시 원래 데이터로 다시 로드
+      await loadContacts();
+      if (selectedContact?.id === contactId) {
+        const data = await getContacts();
+        if (data.success) {
+          const original = data.contacts.find((c) => c.id === contactId);
+          if (original) {
+            setSelectedContact(original);
+          }
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      sessionStorage.removeItem("user_role");
+      sessionStorage.removeItem("user_email");
+      router.push("/admin/login");
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      router.push("/admin/login");
+    }
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen py-12 px-4 bg-gray-50">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            관리자 페이지
+          </h1>
+          <p className="text-gray-600">전문 리포트 관리 및 보관</p>
+
+          {/* 탭 메뉴 */}
+          <div className="mt-4 flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => {
+                setActiveTab("reports");
+                setSelectedReport(null);
+              }}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                activeTab === "reports"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              리포트
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("contacts");
+                setSelectedContact(null);
+              }}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                activeTab === "contacts"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              문의
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("reservations");
+                setSelectedReservation(null);
+              }}
+              className={`px-4 py-2 font-semibold transition-colors ${
+                activeTab === "reservations"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              예약
+            </button>
+          </div>
+
+          {/* 관리 메뉴 */}
+          <div className="mt-4 flex gap-4">
+            <Link
+              href="/admin/class"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <ImageIcon className="w-5 h-5" />
+              수업 작품 등록
+            </Link>
+          </div>
+        </div>
+
+        {activeTab === "reports" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 리포트 목록 */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">
+                    리포트 목록
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadReports}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      새로고침
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                </div>
+
+                {/* 검색 */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="검색..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 리포트 리스트 */}
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {loading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      로딩 중...
+                    </div>
+                  ) : filteredReports.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      리포트가 없습니다.
+                    </div>
+                  ) : (
+                    filteredReports.map((report) => (
+                      <div
+                        key={report.id}
+                        onClick={() => loadReportDetail(report.id)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedReport?.id === report.id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {new Date(report.created_at).toLocaleDateString(
+                                "ko-KR"
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(report.created_at).toLocaleTimeString(
+                                "ko-KR"
+                              )}
+                            </p>
+                            {report.user_emotion && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                감정: {report.user_emotion}
+                              </p>
+                            )}
+                          </div>
+                          <Eye className="w-5 h-5 text-gray-400" />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2 font-mono">
+                          ID: {report.id.substring(0, 8)}...
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 리포트 상세 */}
+            <div className="lg:col-span-2">
+              {selectedReport ? (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      전문 리포트
+                    </h2>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (!selectedReport) return;
+                          try {
+                            await downloadAdminReportPDF(selectedReport.id);
+                          } catch (error: any) {
+                            alert("PDF 다운로드 실패: " + error.message);
+                          }
+                        }}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        PDF 다운로드
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 리포트 정보 */}
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">생성일:</span>
+                        <span className="ml-2 text-gray-800">
+                          {new Date(selectedReport.created_at).toLocaleString(
+                            "ko-KR"
+                          )}
+                        </span>
+                      </div>
+                      {selectedReport.user_emotion && (
+                        <div>
+                          <span className="text-gray-600">선택 감정:</span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReport.user_emotion}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 업로드된 그림 표시 */}
+                  {(selectedReport.image_metadata?.image_url ||
+                    selectedReport.image_metadata?.base64) && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span className="text-xl">🖼️</span> 업로드된 그림
+                      </h3>
+                      <div className="bg-white p-4 rounded-lg border border-gray-200 flex justify-center">
+                        <img
+                          src={
+                            selectedReport.image_metadata?.image_url
+                              ? selectedReport.image_metadata.image_url
+                              : selectedReport.image_metadata?.base64
+                              ? `data:image/jpeg;base64,${selectedReport.image_metadata.base64}`
+                              : ""
+                          }
+                          alt="업로드된 그림"
+                          className="max-w-full h-auto rounded-lg shadow-md object-contain"
+                          style={{ maxHeight: "600px", maxWidth: "100%" }}
+                          onError={(e) => {
+                            console.error("이미지 로드 실패:", e);
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                          }}
+                        />
+                      </div>
+                      {selectedReport.image_metadata?.format && (
+                        <div className="mt-2 text-xs text-gray-500 text-center">
+                          형식: {selectedReport.image_metadata.format} | 크기:{" "}
+                          {selectedReport.image_metadata.width} x{" "}
+                          {selectedReport.image_metadata.height}px
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 각 에이전트 결과 상세 표시 */}
+                  <div className="mb-6 space-y-6">
+                    {/* 1. 이미지 관찰 전문가 결과 */}
+                    {selectedReport.observation && (
+                      <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="text-2xl">🎨</span> 1. 이미지 관찰
+                          전문가 결과
+                        </h3>
+                        <div className="space-y-4">
+                          {selectedReport.observation.colors &&
+                            selectedReport.observation.colors.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  색상 분석:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.observation.colors.map(
+                                    (color: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                                      >
+                                        {color}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.observation.shapes &&
+                            selectedReport.observation.shapes.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  형태 분석:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.observation.shapes.map(
+                                    (shape: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                                      >
+                                        {shape}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.observation.composition && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                구성:
+                              </p>
+                              <p className="text-gray-800">
+                                {selectedReport.observation.composition}
+                              </p>
+                            </div>
+                          )}
+                          {selectedReport.observation.details &&
+                            selectedReport.observation.details.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  세부사항:
+                                </p>
+                                <ul className="list-disc list-inside space-y-1 text-gray-800">
+                                  {selectedReport.observation.details.map(
+                                    (detail: string, idx: number) => (
+                                      <li key={idx}>{detail}</li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                          {selectedReport.observation.overall_impression && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                전체 인상:
+                              </p>
+                              <p className="text-gray-800">
+                                {selectedReport.observation.overall_impression}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. 감정언어 분석 전문가 결과 */}
+                    {selectedReport.emotional_language && (
+                      <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-pink-500">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="text-2xl">💭</span> 2. 감정언어 분석
+                          전문가 결과
+                        </h3>
+                        <div className="space-y-4">
+                          {selectedReport.emotional_language
+                            .dominant_emotions &&
+                            selectedReport.emotional_language.dominant_emotions
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  주요 감정:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.emotional_language.dominant_emotions.map(
+                                    (emotion: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm"
+                                      >
+                                        {emotion}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.emotional_language.emotional_tone && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                감정적 톤:
+                              </p>
+                              <p className="text-gray-800">
+                                {
+                                  selectedReport.emotional_language
+                                    .emotional_tone
+                                }
+                              </p>
+                            </div>
+                          )}
+                          {selectedReport.emotional_language
+                            .symbolic_elements &&
+                            selectedReport.emotional_language.symbolic_elements
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  상징적 요소:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.emotional_language.symbolic_elements.map(
+                                    (element: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                                      >
+                                        {element}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.emotional_language
+                            .intensity_level && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                강도 수준:
+                              </p>
+                              <p className="text-gray-800">
+                                {
+                                  selectedReport.emotional_language
+                                    .intensity_level
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. 상담 질문 생성 전문가 결과 */}
+                    {selectedReport.reflection_questions && (
+                      <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="text-2xl">❓</span> 3. 상담 질문 생성
+                          전문가 결과
+                        </h3>
+                        <div className="space-y-4">
+                          {selectedReport.reflection_questions.questions &&
+                            selectedReport.reflection_questions.questions
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  생성된 질문 및 상담사 답변:
+                                </p>
+                                <div className="space-y-4">
+                                  {selectedReport.reflection_questions.questions.map(
+                                    (question: string, idx: number) => {
+                                      // 사용자가 입력한 답변을 우선적으로 사용, 없으면 저장된 답변 사용
+                                      const existingAnswer =
+                                        counselorAnswers[idx] !== undefined
+                                          ? counselorAnswers[idx]
+                                          : selectedReport.image_metadata
+                                              ?.counselor_answers?.[idx] || "";
+
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="border border-gray-200 rounded-lg p-4"
+                                        >
+                                          <div className="mb-2">
+                                            <span className="font-semibold text-gray-700">
+                                              질문 {idx + 1}:
+                                            </span>
+                                            <p className="text-gray-800 mt-1">
+                                              {question}
+                                            </p>
+                                          </div>
+                                          <div className="mt-3">
+                                            <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                              상담사 답변:
+                                            </label>
+                                            <textarea
+                                              value={existingAnswer}
+                                              onChange={(e) => {
+                                                setCounselorAnswers({
+                                                  ...counselorAnswers,
+                                                  [idx]: e.target.value,
+                                                });
+                                                // 답변 수정 시 저장 상태 해제
+                                                setAnswersSaved(false);
+                                              }}
+                                              placeholder="전문가적 의견을 입력하세요"
+                                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-black disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                              rows={4}
+                                              disabled={answersSaved}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                                <div className="mt-4">
+                                  <button
+                                    onClick={async () => {
+                                      if (!selectedReport) return;
+
+                                      // 저장할 답변 확인 (빈 문자열도 포함)
+                                      const answersToSave = {
+                                        ...counselorAnswers,
+                                      };
+
+                                      // 모든 질문에 대해 답변이 있는지 확인
+                                      if (
+                                        selectedReport.reflection_questions
+                                          ?.questions
+                                      ) {
+                                        selectedReport.reflection_questions.questions.forEach(
+                                          (_: string, idx: number) => {
+                                            if (!(idx in answersToSave)) {
+                                              answersToSave[idx] = "";
+                                            }
+                                          }
+                                        );
+                                      }
+
+                                      setSavingAnswers(true);
+                                      try {
+                                        await saveCounselorAnswers(
+                                          selectedReport.id,
+                                          answersToSave
+                                        );
+                                        // 답변 저장 완료 상태로 설정하여 입력 박스 비활성화
+                                        setAnswersSaved(true);
+                                        // 리포트 다시 로드하여 업데이트된 답변 반영
+                                        await loadReportDetail(
+                                          selectedReport.id
+                                        );
+                                        alert("상담사 답변이 저장되었습니다.");
+                                      } catch (error: any) {
+                                        alert(
+                                          "답변 저장 실패: " + error.message
+                                        );
+                                        setAnswersSaved(false);
+                                      } finally {
+                                        setSavingAnswers(false);
+                                      }
+                                    }}
+                                    disabled={
+                                      savingAnswers ||
+                                      Object.keys(counselorAnswers).length ===
+                                        0 ||
+                                      answersSaved
+                                    }
+                                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors"
+                                  >
+                                    {savingAnswers
+                                      ? "저장 중..."
+                                      : answersSaved
+                                      ? "저장 완료"
+                                      : "상담사 답변 저장"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.reflection_questions.categories &&
+                            selectedReport.reflection_questions.categories
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  질문 카테고리:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.reflection_questions.categories.map(
+                                    (category: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm"
+                                      >
+                                        {category}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.reflection_questions.purpose && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                질문의 목적:
+                              </p>
+                              <p className="text-gray-800">
+                                {selectedReport.reflection_questions.purpose}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. 상담전문가 결과 */}
+                    {selectedReport.professional_conclusion && (
+                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <span className="text-2xl">👨‍⚕️</span> 4. 미술심리
+                          전문가 종합 분석
+                        </h3>
+                        {/* 전문 리포트 내용 */}
+                        <div className="prose max-w-none">
+                          <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                            <div
+                              className="markdown-content text-gray-800 whitespace-pre-line"
+                              dangerouslySetInnerHTML={{
+                                __html: (() => {
+                                  const reportContent =
+                                    selectedReport.professional_report ||
+                                    selectedReport.chat_based_report ||
+                                    selectedReport.image_metadata
+                                      ?.professional_report ||
+                                    "전문 리포트가 생성되지 않았습니다.";
+
+                                  if (typeof reportContent !== "string") {
+                                    return "전문 리포트가 생성되지 않았습니다.";
+                                  }
+
+                                  let html = reportContent;
+
+                                  // ==== 섹션 구분자 처리
+                                  html = html.replace(
+                                    /====\s*이미지 분석\s*====/g,
+                                    '<div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-blue-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">🎨</span> 이미지 분석</h2>'
+                                  );
+                                  html = html.replace(
+                                    /====\s*감정 언어 분석\s*====/g,
+                                    '</div><div class="bg-white p-6 rounded-xl shadow-md mb-6 border-l-4 border-pink-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">💭</span> 감정 언어 분석</h2>'
+                                  );
+                                  html = html.replace(
+                                    /====\s*종합결론 전문가 종합 평가\s*====/g,
+                                    '</div><div class="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl shadow-md mb-6 border-l-4 border-purple-500"><h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><span class="text-2xl">👨‍⚕️</span> 종합결론 전문가 종합 평가</h2>'
+                                  );
+
+                                  // 필드별 포맷팅
+                                  html = html.replace(
+                                    /composition:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📐</span> 구성</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+                                  html = html.replace(
+                                    /details:\s*([\s\S]*?)(?=\n\n|====|overall_impression:|$)/g,
+                                    (match, content) => {
+                                      const items = content
+                                        .split("\n")
+                                        .filter((line: string) => line.trim());
+                                      const listItems = items
+                                        .map((item: string) => {
+                                          const trimmed = item
+                                            .replace(/^-\s*/, "")
+                                            .trim();
+                                          return `<li class="mb-2 text-gray-700 pl-2">${trimmed}</li>`;
+                                        })
+                                        .join("");
+                                      return `<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-2 font-semibold flex items-center gap-1"><span>🔍</span> 세부사항</p><ul class="list-disc list-inside space-y-1">${listItems}</ul></div>`;
+                                    }
+                                  );
+                                  html = html.replace(
+                                    /overall_impression:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-blue-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🌟</span> 전체 인상</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+                                  html = html.replace(
+                                    /dominant_emotions:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>😊</span> 주요 감정</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+                                  html = html.replace(
+                                    /emotional_tone:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🎭</span> 감정적 톤</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+                                  html = html.replace(
+                                    /symbolic_elements:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>🔮</span> 상징적 요소</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+                                  html = html.replace(
+                                    /intensity_level:\s*([^\n]+)/g,
+                                    '<div class="mb-4 p-3 bg-pink-50 rounded-lg"><p class="text-sm text-gray-600 mb-1 font-semibold flex items-center gap-1"><span>📊</span> 강도 수준</p><p class="text-gray-800 font-medium">$1</p></div>'
+                                  );
+
+                                  // 마크다운 기본 포맷팅
+                                  html = html.replace(
+                                    /##\s+(.+?)(?=\n|$)/g,
+                                    '<h2 class="text-xl font-bold mt-8 mb-4 text-gray-900 border-b-2 border-gray-300 pb-2 flex items-center gap-2"><span class="text-xl">📋</span> $1</h2>'
+                                  );
+                                  html = html.replace(
+                                    /###\s+(.+?)(?=\n|$)/g,
+                                    '<h3 class="text-lg font-semibold mt-6 mb-3 text-gray-800 flex items-center gap-2"><span class="text-lg">▸</span> $1</h3>'
+                                  );
+                                  html = html.replace(
+                                    /#\s+(.+?)(?=\n|$)/g,
+                                    '<h1 class="text-2xl font-bold mb-6 text-gray-900">$1</h1>'
+                                  );
+                                  html = html.replace(
+                                    /\*\*(.+?)\*\*/g,
+                                    '<strong class="font-semibold text-gray-900">$1</strong>'
+                                  );
+                                  html = html.replace(
+                                    /\*(.+?)\*/g,
+                                    '<em class="text-gray-700">$1</em>'
+                                  );
+                                  html = html.replace(
+                                    /^-\s+(.+?)(?=\n|$)/gm,
+                                    '<li class="ml-4 mb-2 text-gray-700">$1</li>'
+                                  );
+                                  html = html.replace(
+                                    /\n\n/g,
+                                    '</p><p class="mb-3 text-gray-800 leading-relaxed">'
+                                  );
+                                  html = html.replace(/\n/g, "<br />");
+                                  html = html.replace(
+                                    /^(.+)$/gm,
+                                    '<p class="mb-3 text-gray-800 leading-relaxed">$1</p>'
+                                  );
+
+                                  // 마지막 닫기 태그 추가
+                                  if (
+                                    !html.includes("</div>") ||
+                                    html.split("</div>").length <
+                                      html.split("<div").length
+                                  ) {
+                                    html += "</div>";
+                                  }
+
+                                  return html;
+                                })(),
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {selectedReport.professional_conclusion
+                            .executive_summary &&
+                            selectedReport.professional_conclusion
+                              .executive_summary !==
+                              "결론 파싱 중 오류가 발생했습니다." && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  요약 및 핵심 인사이트:
+                                </p>
+                                <p className="text-gray-800 whitespace-pre-line">
+                                  {
+                                    selectedReport.professional_conclusion
+                                      .executive_summary
+                                  }
+                                </p>
+                              </div>
+                            )}
+                          {selectedReport.professional_conclusion
+                            .key_findings &&
+                            selectedReport.professional_conclusion.key_findings
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  주요 발견 사항:
+                                </p>
+                                <ul className="list-disc list-inside space-y-1 text-gray-800">
+                                  {selectedReport.professional_conclusion.key_findings.map(
+                                    (finding: string, idx: number) => (
+                                      <li key={idx}>{finding}</li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                          {selectedReport.professional_conclusion
+                            .counseling_direction && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-600 mb-2">
+                                상담 방향성 제시:
+                              </p>
+                              <p className="text-gray-800 whitespace-pre-line">
+                                {
+                                  selectedReport.professional_conclusion
+                                    .counseling_direction
+                                }
+                              </p>
+                            </div>
+                          )}
+                          {selectedReport.professional_conclusion.focus_areas &&
+                            selectedReport.professional_conclusion.focus_areas
+                              .length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  집중 탐색 영역:
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedReport.professional_conclusion.focus_areas.map(
+                                    (area: string, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                                      >
+                                        {area}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          {selectedReport.professional_conclusion
+                            .professional_assessment &&
+                            !selectedReport.professional_conclusion.professional_assessment.includes(
+                              "결론 파싱 중 오류가 발생했습니다"
+                            ) && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  전문가 종합 평가:
+                                </p>
+                                <p className="text-gray-800 whitespace-pre-line">
+                                  {
+                                    selectedReport.professional_conclusion
+                                      .professional_assessment
+                                  }
+                                </p>
+                              </div>
+                            )}
+                          {selectedReport.professional_conclusion
+                            .recommendations &&
+                            selectedReport.professional_conclusion
+                              .recommendations.length > 0 && (
+                              <div>
+                                <p className="text-sm font-semibold text-gray-600 mb-2">
+                                  권장 사항:
+                                </p>
+                                <ul className="list-disc list-inside space-y-1 text-gray-800">
+                                  {selectedReport.professional_conclusion.recommendations.map(
+                                    (rec: string, idx: number) => (
+                                      <li key={idx}>{rec}</li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Chat 응답 (있는 경우) */}
+                  {selectedReport.chat_responses &&
+                    selectedReport.chat_responses.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">
+                          Chat 응답 기록
+                        </h3>
+                        <div className="space-y-3">
+                          {selectedReport.chat_responses.map(
+                            (response: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="p-4 bg-gray-50 rounded-lg"
+                              >
+                                <p className="text-sm font-medium text-gray-700 mb-2">
+                                  Q{idx + 1}: {response.question}
+                                </p>
+                                <p className="text-sm text-gray-800">
+                                  A: {response.answer}
+                                </p>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">왼쪽에서 리포트를 선택하세요.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 문의 목록 */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">문의 목록</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadContacts}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      새로고침
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                </div>
+
+                {/* 검색 */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="검색..."
+                      value={contactSearchTerm}
+                      onChange={(e) => setContactSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 문의 리스트 */}
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {loading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      로딩 중...
+                    </div>
+                  ) : filteredContacts.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      문의가 없습니다.
+                    </div>
+                  ) : (
+                    filteredContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        onClick={() => setSelectedContact(contact)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedContact?.id === contact.id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {contact.name}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {contact.phone}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(contact.created_at).toLocaleDateString(
+                                "ko-KR"
+                              )}{" "}
+                              {new Date(contact.created_at).toLocaleTimeString(
+                                "ko-KR"
+                              )}
+                            </p>
+                            <span
+                              className={`inline-block mt-2 px-2 py-1 text-xs rounded ${getStatusColor(
+                                contact.status
+                              )}`}
+                            >
+                              {getStatusLabel(contact.status)}
+                            </span>
+                          </div>
+                          <Eye className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 문의 상세 */}
+            <div className="lg:col-span-2">
+              {selectedContact ? (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      문의 상세
+                    </h2>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={selectedContact.status}
+                        onChange={(e) =>
+                          handleContactStatusChange(
+                            selectedContact.id,
+                            e.target.value
+                          )
+                        }
+                        disabled={loading}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="pending">대기중</option>
+                        <option value="consultation_scheduled">
+                          상담 예약
+                        </option>
+                        <option value="consultation_completed">
+                          상담 완료
+                        </option>
+                        <option value="class_scheduled">수업예약</option>
+                        <option value="contacted">연락완료</option>
+                        <option value="completed">처리완료</option>
+                      </select>
+                      {loading && (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 문의 정보 */}
+                  <div className="mb-6 space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            이름:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedContact.name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            연락처:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedContact.phone}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            아이 연령:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedContact.child_age}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            상태:
+                          </span>
+                          <span
+                            className={`ml-2 px-2 py-1 text-xs rounded ${getStatusColor(
+                              selectedContact.status
+                            )}`}
+                          >
+                            {getStatusLabel(selectedContact.status)}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-600 font-semibold">
+                            접수일시:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(
+                              selectedContact.created_at
+                            ).toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800 mb-3">
+                        문의 내용
+                      </h3>
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-gray-800 whitespace-pre-wrap">
+                          {selectedContact.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">왼쪽에서 문의를 선택하세요.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === "reservations" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 예약 목록 */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">예약 목록</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadReservations}
+                      className="text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      새로고침
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                </div>
+
+                {/* 검색 */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="검색..."
+                      value={reservationSearchTerm}
+                      onChange={(e) => setReservationSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 예약 리스트 */}
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {loading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      로딩 중...
+                    </div>
+                  ) : filteredReservations.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      예약이 없습니다.
+                    </div>
+                  ) : (
+                    filteredReservations.map((reservation) => (
+                      <div
+                        key={reservation.id}
+                        onClick={() => setSelectedReservation(reservation)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedReservation?.id === reservation.id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {reservation.child_name} ({reservation.child_age})
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(reservation.reservation_date).toLocaleDateString("ko-KR")}{" "}
+                              {reservation.reservation_time.substring(0, 5)}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {reservation.parent_phone}
+                            </p>
+                            <span
+                              className={`inline-block mt-2 px-2 py-1 text-xs rounded ${getReservationStatusColor(
+                                reservation.status
+                              )}`}
+                            >
+                              {getReservationStatusLabel(reservation.status)}
+                            </span>
+                          </div>
+                          <Eye className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 예약 상세 */}
+            <div className="lg:col-span-2">
+              {selectedReservation ? (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">
+                      예약 상세
+                    </h2>
+                    <div className="flex gap-2 items-center">
+                      {selectedReservation.status === "pending_deposit" && (
+                        <button
+                          onClick={() => handleConfirmDeposit(selectedReservation.id)}
+                          disabled={loading}
+                          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                          입금 확인
+                        </button>
+                      )}
+                      {loading && (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 예약 정보 */}
+                  <div className="mb-6 space-y-4">
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 번호:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.id.substring(0, 8)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            상태:
+                          </span>
+                          <span
+                            className={`ml-2 px-2 py-1 text-xs rounded ${getReservationStatusColor(
+                              selectedReservation.status
+                            )}`}
+                          >
+                            {getReservationStatusLabel(selectedReservation.status)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 날짜:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.reservation_date).toLocaleDateString("ko-KR")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약 시간:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.reservation_time.substring(0, 5)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            아이 이름:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.child_name}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            아이 연령:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.child_age}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-600 font-semibold">
+                            부모 전화번호:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.parent_phone}
+                          </span>
+                        </div>
+                        {selectedReservation.notes && (
+                          <div className="col-span-2">
+                            <span className="text-gray-600 font-semibold">
+                              메모:
+                            </span>
+                            <p className="mt-1 text-gray-800">
+                              {selectedReservation.notes}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약금:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {selectedReservation.deposit_amount.toLocaleString()}원
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            입금 기한:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.deposit_confirmation_deadline).toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-semibold">
+                            예약일시:
+                          </span>
+                          <span className="ml-2 text-gray-800">
+                            {new Date(selectedReservation.created_at).toLocaleString("ko-KR")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">왼쪽에서 예약을 선택하세요.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
