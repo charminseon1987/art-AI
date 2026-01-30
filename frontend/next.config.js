@@ -39,6 +39,7 @@ const nextConfig = {
   },
   // Cloudflare Pages 배포를 위한 설정
   // @cloudflare/next-on-pages를 사용하므로 output 설정 제거
+  // Turbopack은 자동으로 프로젝트 루트를 감지합니다
 };
 
 module.exports = nextConfig;

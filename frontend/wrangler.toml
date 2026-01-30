@@ -5,8 +5,8 @@ name = "art-ai-frontend"
 compatibility_date = "2024-01-01"
 
 # Pages 프로젝트 설정
-# @cloudflare/next-on-pages를 사용할 때는 자동으로 감지되므로 주석 처리
-# pages_build_output_dir = ".vercel/output/static"
+# @cloudflare/next-on-pages를 사용할 때는 빌드 결과물 경로를 명시해주는 것이 좋습니다
+pages_build_output_dir = ".vercel/output/static"
 
 # 환경 변수는 Cloudflare Pages 대시보드에서 설정하거나
 # wrangler pages deploy 시 --env 플래그로 전달할 수 있습니다

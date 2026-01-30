@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Upload,
@@ -35,7 +35,8 @@ import {
   getReport,
 } from "@/lib/api";
 
-export default function CounselingPage() {
+
+function CounselingPageContent() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [reportData, setReportData] = useState<any>(null);
@@ -1282,5 +1283,24 @@ export default function CounselingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CounselingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen py-12 px-4 bg-gray-50">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white p-8 rounded-lg shadow-md text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">로딩 중...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CounselingPageContent />
+    </Suspense>
   );
 }
