@@ -3,9 +3,13 @@
     "@polar-sh/nextjs": "^0.9.3"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16"
+    "@cloudflare/next-on-pages": "^1.13.16",
+    "concurrently": "^9.2.1"
   },
   "scripts": {
-    "vercel-build": "next build"
+    "vercel-build": "next build",
+    "dev:backend": "bash start_api.sh",
+    "dev:frontend": "pnpm -C frontend dev",
+    "dev": "concurrently -k -n backend,frontend \"pnpm dev:backend\" \"pnpm dev:frontend\""
   }
 }
