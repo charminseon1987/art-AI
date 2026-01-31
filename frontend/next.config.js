@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -39,12 +41,10 @@ const nextConfig = {
   },
   // Cloudflare Pages 배포를 위한 설정
   // @cloudflare/next-on-pages를 사용하므로 output 설정 제거
-  experimental: {
-    turbopack: {
-      // Cloudflare Pages 빌드 환경에서 프로젝트 루트 명시적 지정
-      // frontend 디렉토리가 루트이므로 현재 디렉토리로 설정
-      root: ".",
-    },
+  turbopack: {
+    // Cloudflare Pages 빌드 환경에서 프로젝트 루트 명시적 지정
+    // frontend 디렉토리가 루트이므로 __dirname을 사용하여 절대 경로로 설정
+    root: __dirname,
   },
 };
 
