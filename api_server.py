@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 import sys
 import logging
+import asyncio
 import random
 from io import BytesIO
 
@@ -32,7 +33,7 @@ from models.contact import ContactInquiry
 from langchain_openai import ChatOpenAI
 from utils.setup import setup_directories
 from utils.auth import verify_admin_token
-from utils.supabase_auth import verify_supabase_token, require_admin_or_supervisor
+from utils.supabase_auth import verify_supabase_token, require_admin_or_supervisor, supabase as supabase_client
 
 # 디렉토리 설정
 setup_directories()
@@ -136,6 +137,56 @@ async def root():
     return {"message": "AI 그림 분석 도구 API 서버", "status": "running"}
 
 
+@app.get("/api/stats")
+async def get_public_stats():
+    """랜딩 페이지용 공개 집계 (인증 불필요). 실제 데이터만 반환."""
+    if not supabase_client:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "success": False,
+                "error": "통계를 불러올 수 없습니다.",
+                "total_analyses": 0,
+                "total_users": 0,
+            },
+        )
+    try:
+        total_analyses = 0
+        total_users = 0
+
+        # user_usage_limits 전체 합산 (image + fingerprint)
+        usage_res = supabase_client.table("user_usage_limits").select(
+            "image_analysis_count", "fingerprint_analysis_count"
+        ).execute()
+        if usage_res.data:
+            for row in usage_res.data:
+                total_analyses += (row.get("image_analysis_count") or 0) + (
+                    row.get("fingerprint_analysis_count") or 0
+                )
+
+        # profiles 행 수
+        profiles_res = supabase_client.table("profiles").select("id").execute()
+        if profiles_res.data is not None:
+            total_users = len(profiles_res.data)
+
+        return {
+            "success": True,
+            "total_analyses": total_analyses,
+            "total_users": total_users,
+        }
+    except Exception as e:
+        logger.exception("공개 통계 조회 실패: %s", e)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "통계를 불러오는 중 오류가 발생했습니다.",
+                "total_analyses": 0,
+                "total_users": 0,
+            },
+        )
+
+
 @app.post("/api/analyze-image")
 async def analyze_image(
     file: UploadFile = File(...),
@@ -198,11 +249,14 @@ async def analyze_image(
             )
         
         print("[analyze-image] 이미지 처리 완료, AI 분석 시작...")
-        # AI 분석
+        desc = image_result.get("description", "") or ""
+        logger.info("[analyze-image] image_result['description'] length=%s, preview=%s", len(desc), (desc[:200] + "..." if len(desc) > 200 else desc))
+        # AI 분석 (동기 Crew 실행을 스레드에서 수행해 이벤트 루프 블로킹 방지)
         try:
-            report_data = ai_service.analyze_image(
+            report_data = await asyncio.to_thread(
+                ai_service.analyze_image,
                 image_result["description"],
-                emotion
+                emotion,
             )
             print(f"[analyze-image] AI 분석 완료: report_id={report_data.id}")
         except Exception as ai_error:
@@ -377,7 +431,34 @@ async def generate_report(
                 import traceback
                 print(f"종합결론 업데이트 오류 (계속 진행): {traceback.format_exc()}")
                 # 오류 발생 시 기존 리포트 사용
-        
+
+        # 채팅 응답이 있으면 분석 에이전트(교육용 상세 분석) 실행
+        if chat_responses_list:
+            try:
+                from services.analysis_service import AnalysisService
+                from services.scraping_service import ArtTherapyScrapingService
+                scraping_service = ArtTherapyScrapingService()
+                analysis_service = AnalysisService(llm, scraping_service)
+
+                def run_analysis_session():
+                    evaluation = analysis_service.conduct_analysis_session(
+                        report_data, chat_responses_list
+                    )
+                    return analysis_service.generate_professional_report(
+                        report_data, evaluation
+                    )
+
+                professional_analysis_report = await asyncio.to_thread(run_analysis_session)
+                report_data.image_metadata = report_data.image_metadata or {}
+                report_data.image_metadata["professional_analysis_report"] = (
+                    professional_analysis_report
+                )
+                print("[generate-report] 분석 에이전트(교육용 상세 분석) 실행 완료")
+            except Exception as analysis_err:
+                import traceback
+                print(f"[generate-report] 분석 에이전트 실행 오류 (계속 진행): {traceback.format_exc()}")
+                # 오류 시에도 리포트 생성은 진행
+
         # 간단 리포트 생성 (미술 심리 전문가 리포트 - 최종본)
         simple_report = simple_report_service.generate_simple_report(
             report_data,

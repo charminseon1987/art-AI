@@ -40,6 +40,15 @@ class ImageService:
             
             # 이미지 설명 생성 (Vision API 사용)
             description = self._generate_image_description(image, img_base64)
+            # Vision 실패 시 description이 비거나 너무 짧으면 기본 문구로 폴백 (AIService 입력 보장)
+            if not description or len(description.strip()) < 50:
+                fallback = (
+                    f"이미지 기본 정보: 크기 {metadata['width']}x{metadata['height']} 픽셀, "
+                    f"형식 {metadata.get('format', 'unknown')}, 색상 모드 {metadata.get('mode', 'unknown')}. "
+                    "Vision API 분석을 사용할 수 없어 기본 메타데이터만 제공됩니다. "
+                    "색상·형태·구성에 대한 상세 분석은 AI 에이전트 단계에서 보완됩니다."
+                )
+                description = (description or "").strip() + (" " + fallback if (description or "").strip() else fallback)
             
             return {
                 "success": True,

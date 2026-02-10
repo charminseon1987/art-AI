@@ -9,6 +9,9 @@ from services.scraping_service import ArtTherapyScrapingService
 from models.report import ReportData, ImageObservation, EmotionalLanguage, ReflectionQuestion, ProfessionalConclusion
 from typing import Dict, Any, Optional
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AIService:
@@ -35,6 +38,7 @@ class AIService:
 """
         
         # 1단계: 이미지 관찰
+        logger.info("[analyze_image] 1단계: 이미지 관찰 시작")
         observation_task = self.image_agent.create_observation_task(enhanced_description)
         observation_crew = Crew(
             agents=[self.image_agent.agent],
@@ -44,10 +48,9 @@ class AIService:
         )
         observation_result = observation_crew.kickoff()
         observation = self.image_agent.parse_observation(str(observation_result))
-        
+        logger.info("[analyze_image] 1단계: 이미지 관찰 완료")
         # 관찰 결과 디버깅 (개발용)
-        import logging
-        logging.info(f"관찰 결과: {observation.model_dump()}")
+        logger.info(f"관찰 결과: {observation.model_dump()}")
         
         # 관찰 결과가 비어있으면 원본 결과를 포함
         if not observation.colors and not observation.shapes:
@@ -55,6 +58,7 @@ class AIService:
             observation.details.append(f"원본 관찰 결과: {str(observation_result)[:500]}")
         
         # 2단계: 감정 언어 분석 (관찰 결과를 명시적으로 전달)
+        logger.info("[analyze_image] 2단계: 감정 언어 분석 시작")
         emotional_task = self.emotional_agent.create_emotional_analysis_task(observation, user_emotion)
         emotional_crew = Crew(
             agents=[self.emotional_agent.agent],
@@ -64,8 +68,10 @@ class AIService:
         )
         emotional_result = emotional_crew.kickoff()
         emotional_language = self.emotional_agent.parse_emotional_language(str(emotional_result))
-        
+        logger.info("[analyze_image] 2단계: 감정 언어 분석 완료")
+
         # 3단계: 반성 질문 생성
+        logger.info("[analyze_image] 3단계: 반성 질문 생성 시작")
         question_task = self.question_agent.create_question_generation_task(observation, emotional_language)
         question_crew = Crew(
             agents=[self.question_agent.agent],
@@ -75,16 +81,16 @@ class AIService:
         )
         question_result = question_crew.kickoff()
         reflection_questions = self.question_agent.parse_reflection_questions(str(question_result))
-        
+        logger.info("[analyze_image] 3단계: 반성 질문 생성 완료")
         # 디버깅: 질문 파싱 결과 확인
-        import logging
-        logging.info(f"질문 파싱 결과: {reflection_questions.model_dump()}")
+        logger.info(f"질문 파싱 결과: {reflection_questions.model_dump()}")
         
         # 질문이 없으면 원본 결과를 로그에 기록
         if not reflection_questions.questions:
-            logging.warning(f"질문 파싱 실패. 원본 결과: {str(question_result)[:500]}")
+            logger.warning(f"질문 파싱 실패. 원본 결과: {str(question_result)[:500]}")
         
         # 4단계: 전문가 결론 생성 (참고 자료 포함)
+        logger.info("[analyze_image] 4단계: 전문가 결론 생성 시작")
         reference_material = self.scraping_service.get_reference_material()
         # ConclusionAgent에 참고 자료 전달
         conclusion_agent_with_refs = ConclusionAgent(self.llm, reference_material=reference_material)
@@ -103,7 +109,8 @@ class AIService:
         )
         conclusion_result = conclusion_crew.kickoff()
         professional_conclusion = conclusion_agent_with_refs.parse_conclusion(str(conclusion_result))
-        
+        logger.info("[analyze_image] 4단계: 전문가 결론 생성 완료")
+
         # ReportData 객체 생성 (20년 경력 상담전문가의 FinalAnswer를 보고서로 사용)
         import uuid
         report_data = ReportData(

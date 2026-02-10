@@ -167,6 +167,7 @@ export default function AnalysisPage() {
 
     if (paymentSuccess === "true" && checkoutId && step === 1) {
       const restoreAndAnalyze = async () => {
+        setGeneratingReport(true);
         try {
           console.log("[AnalysisPage] 결제 완료 확인, 파일 복원 시작");
 
@@ -216,8 +217,7 @@ export default function AnalysisPage() {
             type: restoredFile.type,
           });
 
-          // 4. 분석 시작
-          setGeneratingReport(true);
+          // 4. 분석 시작 (generatingReport는 이미 true)
           const analysisResult = await analyzeImage(
             restoredFile,
             fileData.emotion
@@ -262,6 +262,19 @@ export default function AnalysisPage() {
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
             <p className="text-gray-600">리포트를 불러오는 중...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 분석 중 표시 (step 1에서 파일 복원 후 분석할 때)
+  if (generatingReport && step === 1) {
+    return (
+      <div className="min-h-screen py-12 px-4 bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-800 mb-2">AI 분석 중</p>
+          <p className="text-gray-600">아이의 그림을 꼼꼼히 분석하고 있습니다</p>
         </div>
       </div>
     );

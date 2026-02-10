@@ -185,6 +185,16 @@ class SimpleReportService:
                     report += "\n"
             
             report += "---\n\n"
+
+        # 4. 교육용 상세 분석 (분석 에이전트 결과)
+        professional_analysis_report = (
+            report_data.image_metadata.get("professional_analysis_report", "")
+            if report_data.image_metadata else ""
+        )
+        if professional_analysis_report:
+            report += "## 4. 교육용 상세 분석\n\n"
+            report += professional_analysis_report
+            report += "\n\n---\n\n"
         
         report += "\n⚠ **중요 안내**\n\n본 리포트는 그림의 시각적 요소와 아이의 이야기를 정리한 참고 자료이며,\n심리 진단이나 치료를 목적으로 하지 않습니다.\n"
         

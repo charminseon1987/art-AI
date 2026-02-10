@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   Upload,
   Loader2,
@@ -22,6 +23,7 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
+  const pathname = usePathname();
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -367,19 +369,14 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         console.log("[ImageUpload] 파일 정보를 IndexedDB에 저장");
       }
 
-      // 4. Polar 결제 페이지로 리다이렉트
-      const productId =
-        process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID ||
-        "a86a8df2-1f4f-4fc5-bed8-176aafe178c7";
-      const metadata = {
-        analysisType: "image",
-        fileName: selectedFile.name,
-        originalSize: selectedFile.size,
-        compressedSize: fileToStore.size,
-      };
-      const checkoutUrl = `/api/checkout?products=${productId}&metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
-      console.log("[ImageUpload] Polar 결제 페이지로 리다이렉트:", checkoutUrl);
-      window.location.href = checkoutUrl;
+      // 4. 결제 없이 분석 페이지로 이동 (저장된 파일로 분석 시작)
+      // [locale]/analysis 페이지만 복원·분석 로직이 있으므로 locale 포함 경로로 이동
+      const basePath = pathname?.split("?")[0] || "";
+      const hasLocale = /^\/[a-z]{2}\/analysis/.test(basePath);
+      const analysisPath = hasLocale ? basePath : "/ko/analysis";
+      const redirectUrl = `${analysisPath}?payment_success=true&checkout_id=no_payment`;
+      console.log("[ImageUpload] 분석 페이지로 이동:", redirectUrl);
+      window.location.href = redirectUrl;
     } catch (error: any) {
       console.error("[ImageUpload] 결제 준비 오류:", error);
       alert(

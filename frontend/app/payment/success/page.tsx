@@ -19,7 +19,7 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     const verify = async () => {
-      // Polar.sh checkout_id가 있는 경우 바로 성공 처리 및 분석 페이지로 리다이렉트
+      // checkout_id가 있는 경우(결제 완료 또는 결제 생략) 분석 페이지로 리다이렉트
       if (checkoutId) {
         setVerified(true);
         setVerifying(false);

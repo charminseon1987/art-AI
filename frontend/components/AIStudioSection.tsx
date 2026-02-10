@@ -13,7 +13,6 @@ import {
   Pause,
   FileText,
   Palette,
-  Star,
 } from "lucide-react";
 
 interface AIFeature {
@@ -359,34 +358,6 @@ export default function AIStudioSection() {
             </div>
           </div>
         </div>
-
-        {/* 하단 통계 */}
-        <motion.div
-          style={{ opacity }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-20"
-        >
-          {[
-            { label: "분석된 그림", value: "10,000+", icon: ImageIcon },
-            { label: "정확도", value: "95%", icon: Brain },
-            { label: "만족도", value: "98%", icon: Star },
-            { label: "사용자", value: "5,000+", icon: Zap },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
-            >
-              <stat.icon className="w-8 h-8 text-pink-400 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-white mb-1">
-                {stat.value}
-              </div>
-              <div className="text-sm text-gray-300">{stat.label}</div>
-            </motion.div>
-          ))}
-        </motion.div>
       </div>
     </section>
   );
