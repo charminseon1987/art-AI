@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
@@ -43,6 +44,9 @@ const Interactive3DElements = dynamic(
 // 분석 리포트 이미지 데이터는 컴포넌트 내에서 동적으로 로드
 
 export default function Home() {
+  const t = useTranslations("home");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(true);
   const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -92,15 +96,15 @@ export default function Home() {
         const dominantEmotions =
           report.emotional_language?.dominant_emotions || [];
         const colors = report.observation?.colors || [];
-        const category = dominantEmotions[0] || colors[0] || "분석";
+        const category = dominantEmotions[0] || colors[0] || t("gallery.analysisCategory");
         const emotions = report.emotional_language?.dominant_emotions || [];
         const analysisSummary = report.observation?.overall_impression
           ? report.observation.overall_impression.substring(0, 80) + "..."
-          : "AI가 분석한 그림입니다";
+          : t("gallery.analysisSummary");
         return {
           id: report.id || `report-${index}`,
           image: imageUrl,
-          title: `분석 리포트 #${index + 1}`,
+          title: `${t("gallery.reportTitle")} #${index + 1}`,
           description: analysisSummary,
           width: report.image_metadata?.width || 400,
           height: report.image_metadata?.height || 600,
@@ -128,7 +132,7 @@ export default function Home() {
         if (response && typeof response === "object" && "error" in response) {
           console.warn("리포트 로드 경고:", response.error);
           setGalleryItems([]);
-          setGalleryError(response.error || "리포트를 불러올 수 없습니다.");
+          setGalleryError(response.error || tErrors("reportLoad"));
           // 리포트가 없으면 샘플 이미지 로드
           await loadSampleImages();
           return;
@@ -140,9 +144,7 @@ export default function Home() {
           response.reports &&
           Array.isArray(response.reports)
         ) {
-          const itemsWithImages = transformReportsToGalleryItems(
-            response.reports,
-          );
+          const itemsWithImages = transformReportsToGalleryItems(response.reports);
           if (itemsWithImages.length > 0) {
             setGalleryItems(itemsWithImages);
           } else {
@@ -160,9 +162,7 @@ export default function Home() {
         console.error("분석 이미지 로드 오류:", error);
         // 오류 시 빈 배열 유지 (앱 크래시 방지)
         setGalleryItems([]);
-        setGalleryError(
-          "분석 이미지를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        );
+        setGalleryError(tErrors("imageLoad"));
         // 리포트가 없으면 샘플 이미지 로드
         await loadSampleImages();
       } finally {
@@ -194,7 +194,7 @@ export default function Home() {
     };
 
     loadAnalysisImages();
-  }, []);
+  }, [t, tErrors]);
 
   const scrollToGallery = () => {
     galleryRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -413,7 +413,7 @@ export default function Home() {
                 <Sparkles className="w-4 h-4" />
               </motion.div>
               <span className="text-sm font-semibold">
-                AI로 그림을 분석하고 이해합니다
+                {t("hero.badge")}
               </span>
             </motion.div>
 
@@ -423,11 +423,11 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.7 }}
               className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-8 leading-[1.1] tracking-tight"
             >
-              그림으로 아이의 마음을
+              {t("hero.title")}
               <br />
               <span className="relative inline-block">
                 <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                  천천히 이해합니다
+                  {t("hero.titleHighlight")}
                 </span>
                 <motion.div
                   className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-full"
@@ -444,10 +444,10 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.9 }}
               className="text-xl md:text-2xl text-slate-300/90 mb-14 max-w-3xl mx-auto leading-relaxed font-light"
             >
-              최첨단 AI 기술과 3D 인터랙티브 경험으로
+              {t("hero.description")}
               <br />
               <span className="text-cyan-200">
-                아이의 그림 속 숨겨진 의미를 발견하세요
+                {t("hero.descriptionHighlight")}
               </span>
             </motion.p>
 
@@ -458,11 +458,11 @@ export default function Home() {
               className="flex flex-col sm:flex-row gap-5 justify-center items-center"
             >
               <Link
-                href="/analysis"
+                href="/counseling"
                 className="group relative bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 text-white px-10 py-5 rounded-2xl font-semibold transition-all duration-500 flex items-center justify-center gap-3 shadow-2xl hover:shadow-[0_0_40px_rgba(6,182,212,0.6)] hover:scale-110 transform overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                <span className="relative z-10">그림 분석 시작하기</span>
+                <span className="relative z-10">{t("hero.ctaStart")}</span>
                 <motion.div
                   className="relative z-10"
                   animate={{ x: [0, 5, 0] }}
@@ -475,7 +475,7 @@ export default function Home() {
                 onClick={scrollToGallery}
                 className="group relative bg-slate-800/60 backdrop-blur-xl hover:bg-slate-700/70 text-white border-2 border-slate-600/50 hover:border-cyan-500/50 px-10 py-5 rounded-2xl font-semibold transition-all duration-500 flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl hover:scale-110 transform"
               >
-                <span className="relative z-10">작품 갤러리 보기</span>
+                <span className="relative z-10">{t("hero.ctaGallery")}</span>
                 <motion.div
                   className="relative z-10"
                   animate={{ y: [0, 5, 0] }}
@@ -500,7 +500,7 @@ export default function Home() {
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             className="flex flex-col items-center gap-3 text-slate-400/80"
           >
-            <span className="text-sm font-medium">스크롤하여 더 보기</span>
+            <span className="text-sm font-medium">{t("hero.scrollIndicator")}</span>
             <div className="relative">
               <motion.div
                 className="w-6 h-10 border-2 border-cyan-500/50 rounded-full flex items-start justify-center p-2"
@@ -544,17 +544,17 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-2 bg-cyan-500/20 backdrop-blur-sm border border-cyan-500/30 text-cyan-600 px-4 py-2 rounded-full mb-4">
               <Palette className="w-4 h-4" />
-              <span className="text-sm font-semibold">작품 갤러리</span>
+              <span className="text-sm font-semibold">{t("gallery.title")}</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-              아이들의
+              {t("gallery.heading")}
               <span className="bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {" "}
-                창의적인 작품들
+                {t("gallery.headingHighlight")}
               </span>
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              다양한 주제와 스타일로 표현된 아이들의 그림을 감상해보세요
+              {t("gallery.description")}
             </p>
           </motion.div>
 
@@ -563,7 +563,7 @@ export default function Home() {
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
                   <div className="w-12 h-12 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-slate-600">분석 이미지를 불러오는 중...</p>
+                  <p className="text-slate-600">{t("gallery.loading")}</p>
                 </div>
               </div>
             ) : galleryError ? (
@@ -595,17 +595,17 @@ export default function Home() {
                         setGalleryItems(itemsWithImages);
                         setGalleryError(null);
                       } else {
-                        setGalleryError("리포트를 불러올 수 없습니다.");
+                        setGalleryError(tErrors("reportLoad"));
                       }
                     } catch (error) {
-                      setGalleryError("다시 시도해도 오류가 발생했습니다.");
+                      setGalleryError(tErrors("reportLoadRetry"));
                     } finally {
                       setLoadingGallery(false);
                     }
                   }}
                   className="inline-block mt-4 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
                 >
-                  다시 시도
+                  {tCommon("retry")}
                 </button>
               </div>
             ) : galleryItems.length > 0 ? (
@@ -614,13 +614,13 @@ export default function Home() {
               <div className="text-center py-20">
                 <Palette className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                 <p className="text-slate-600 mb-2">
-                  아직 분석된 이미지가 없습니다
+                  {t("gallery.empty")}
                 </p>
                 <Link
                   href="/analysis"
                   className="inline-block mt-4 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg hover:shadow-lg hover:shadow-cyan-500/50 transition-all"
                 >
-                  첫 번째 분석 시작하기
+                  {t("gallery.emptyCta")}
                 </Link>
               </div>
             )}
@@ -661,17 +661,17 @@ export default function Home() {
         >
           <Sparkles className="w-12 h-12 mx-auto mb-6 animate-pulse text-cyan-400" />
           <h3 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
-            지금 바로 시작해보세요
+            {t("cta.title")}
           </h3>
           <p className="text-xl mb-10 text-slate-300">
             AI로 아이의 그림을 분석하고 더 나은 미술 교육을 제공하세요
           </p>
           <Link
-            href="/analysis"
+            href="/counseling"
             className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-600 hover:via-blue-700 hover:to-indigo-700 text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-cyan-500/50 hover:scale-105 transform"
           >
             <Wand2 className="w-6 h-6" />
-            그림 분석 시작하기
+            {t("cta.button")}
             <ArrowRight className="w-6 h-6" />
           </Link>
         </motion.div>
@@ -687,77 +687,77 @@ export default function Home() {
                 <span className="text-xl font-bold">Art AI Studio</span>
               </div>
               <p className="text-gray-400">
-                AI로 그림을 분석하고 이해하는 미술 교육 플랫폼
+                {t("footer.description")}
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">서비스</h4>
+              <h4 className="font-semibold mb-4">{t("footer.services")}</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
-                  <Link href="/analysis" className="hover:text-pink-400">
-                    그림 분석
+                  <Link href="/counseling" className="hover:text-pink-400">
+                    {t("footer.servicesArtAnalysis")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/class" className="hover:text-pink-400">
-                    미술 수업
+                    {t("footer.servicesArtClass")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/fingerprint" className="hover:text-pink-400">
-                    지문 상담
+                    {t("footer.servicesFingerprint")}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">문의</h4>
+              <h4 className="font-semibold mb-4">{t("footer.inquiry")}</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <Link href="/contact" className="hover:text-pink-400">
-                    연락하기
+                    {t("footer.inquiryContact")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/info" className="hover:text-pink-400">
-                    서비스 안내
+                    {t("footer.inquiryInfo")}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">법적 문서</h4>
+              <h4 className="font-semibold mb-4">{t("footer.legal")}</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <Link href="/terms" className="hover:text-pink-400">
-                    이용약관
+                    {t("footer.legalTerms")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/privacy-policy" className="hover:text-pink-400">
-                    개인정보 처리방침
+                    {t("footer.legalPrivacy")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/privacy" className="hover:text-pink-400">
-                    프라이버시 정책
+                    {t("footer.legalPrivacyPolicy")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/refund" className="hover:text-pink-400">
-                    환불 규정
+                    {t("footer.legalRefund")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/cookies" className="hover:text-pink-400">
-                    쿠키 정책
+                    {t("footer.legalCookies")}
                   </Link>
                 </li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Art AI Studio. All rights reserved.</p>
+            <p>{t("footer.copyright")}</p>
           </div>
         </div>
       </footer>

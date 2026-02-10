@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 
@@ -10,16 +12,20 @@ export const metadata: Metadata = {
   description: "그림으로 아이 마음을 천천히 이해합니다",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="ko">
+    <html lang={locale}>
       <body className={inter.className}>
-        <Navigation />
-        <main className="min-h-screen">{children}</main>
+        <NextIntlClientProvider>
+          <Navigation />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

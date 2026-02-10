@@ -370,10 +370,10 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       }
 
       // 4. 결제 없이 분석 페이지로 이동 (저장된 파일로 분석 시작)
-      // [locale]/analysis 페이지만 복원·분석 로직이 있으므로 locale 포함 경로로 이동
-      const basePath = pathname?.split("?")[0] || "";
-      const hasLocale = /^\/[a-z]{2}\/analysis/.test(basePath);
-      const analysisPath = hasLocale ? basePath : "/ko/analysis";
+      const segments = (pathname?.split("?")[0] || "").split("/").filter(Boolean);
+      const locale =
+        segments[0] && /^[a-z]{2}$/.test(segments[0]) ? segments[0] : "ko";
+      const analysisPath = `/${locale}/counseling`;
       const redirectUrl = `${analysisPath}?payment_success=true&checkout_id=no_payment`;
       console.log("[ImageUpload] 분석 페이지로 이동:", redirectUrl);
       window.location.href = redirectUrl;

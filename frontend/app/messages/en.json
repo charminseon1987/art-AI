@@ -1,0 +1,135 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "noData": "No data"
+  },
+  "nav": {
+    "home": "Home",
+    "artClass": "Art Class",
+    "artAnalysis": "Art Analysis",
+    "fingerprintAnalysis": "Fingerprint Analysis",
+    "consultation": "Consultation",
+    "contact": "Contact",
+    "admin": "Admin",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "brandName": "Analyist AI Agent",
+    "brandNameMobile": "Art Studio"
+  },
+  "home": {
+    "hero": {
+      "badge": "Analyze and understand art with AI",
+      "title": "Understand your child's mind",
+      "titleHighlight": "through their drawings",
+      "description": "With cutting-edge AI and 3D interactive experience,",
+      "descriptionHighlight": "discover the hidden meaning in your child's art",
+      "ctaStart": "Start Art Analysis",
+      "ctaGallery": "View Gallery",
+      "scrollIndicator": "Scroll for more"
+    },
+    "gallery": {
+      "title": "Art Gallery",
+      "heading": "Children's",
+      "headingHighlight": "creative works",
+      "description": "Explore children's drawings in various themes and styles",
+      "loading": "Loading analysis images...",
+      "error": "Unable to load reports",
+      "errorDescription": "Please check if the backend server is running",
+      "empty": "No analyzed images yet",
+      "emptyCta": "Start your first analysis",
+      "retry": "Retry",
+      "reportTitle": "Analysis Report",
+      "analysisCategory": "Analysis",
+      "analysisSummary": "AI-analyzed drawing"
+    },
+    "cta": {
+      "title": "Get started now",
+      "description": "Analyze children's art with AI and provide better art education",
+      "button": "Start Art Analysis"
+    },
+    "footer": {
+      "description": "Art education platform that analyzes and understands art with AI",
+      "services": "Services",
+      "servicesArtAnalysis": "Art Analysis",
+      "servicesArtClass": "Art Class",
+      "servicesFingerprint": "Fingerprint Consultation",
+      "inquiry": "Inquiry",
+      "inquiryContact": "Contact",
+      "inquiryInfo": "Service Info",
+      "legal": "Legal",
+      "legalTerms": "Terms of Use",
+      "legalPrivacy": "Privacy Policy",
+      "legalPrivacyPolicy": "Privacy Policy",
+      "legalRefund": "Refund Policy",
+      "legalCookies": "Cookie Policy",
+      "copyright": "© 2024 Art AI Studio. All rights reserved."
+    }
+  },
+  "analysis": {
+    "title": "Art Analysis",
+    "step1": "Upload image",
+    "step2": "Short questions",
+    "step3": "AI analysis report",
+    "step4": "Book consultation",
+    "upload": {
+      "title": "Upload a drawing",
+      "description": "Upload your child's drawing and AI will analyze it automatically",
+      "dragDrop": "Drag and drop or click to upload",
+      "supportedFormats": "Formats: JPG, PNG, WEBP",
+      "maxSize": "Max size: 10MB",
+      "uploading": "Uploading...",
+      "error": "Upload failed",
+      "retry": "Retry"
+    },
+    "chat": {
+      "title": "Answer a few short questions",
+      "placeholder": "Type your answer...",
+      "send": "Send",
+      "thinking": "Thinking...",
+      "error": "Failed to send message"
+    },
+    "report": {
+      "title": "AI Analysis Report",
+      "generating": "Generating report...",
+      "download": "Download PDF",
+      "share": "Share",
+      "loading": "Loading report...",
+      "error": "Unable to load report"
+    },
+    "reservation": {
+      "title": "Book consultation",
+      "date": "Date",
+      "time": "Time",
+      "childName": "Child's name",
+      "childAge": "Child's age",
+      "parentPhone": "Parent contact",
+      "notes": "Notes",
+      "submit": "Book",
+      "submitting": "Booking...",
+      "success": "Booking completed",
+      "error": "Booking failed"
+    }
+  },
+  "errors": {
+    "reportLoad": "Unable to load report",
+    "reportLoadRetry": "An error occurred. Please try again",
+    "imageLoad": "Error loading analysis images. Please try again later",
+    "unexpectedResponse": "Unexpected response format"
+  }
+}

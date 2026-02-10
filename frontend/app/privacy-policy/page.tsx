@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen py-12 px-4 bg-gray-50">

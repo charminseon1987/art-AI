@@ -1,0 +1,135 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "submit": "Envoyer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "all": "Tout",
+    "noData": "Aucune donnée"
+  },
+  "nav": {
+    "home": "Accueil",
+    "artClass": "Cours d'art",
+    "artAnalysis": "Analyse d'art",
+    "fingerprintAnalysis": "Analyse d'empreintes",
+    "consultation": "Consultation",
+    "contact": "Contact",
+    "admin": "Admin",
+    "menu": "Menu",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "brandName": "Analyist AI Agent",
+    "brandNameMobile": "Atelier d'art"
+  },
+  "home": {
+    "hero": {
+      "badge": "Analysez et comprenez l'art avec l'IA",
+      "title": "Comprenez l'esprit de votre enfant",
+      "titleHighlight": "à travers ses dessins",
+      "description": "Avec l'IA et l'expérience 3D interactive,",
+      "descriptionHighlight": "découvrez le sens caché dans l'art de votre enfant",
+      "ctaStart": "Commencer l'analyse",
+      "ctaGallery": "Voir la galerie",
+      "scrollIndicator": "Faites défiler pour en savoir plus"
+    },
+    "gallery": {
+      "title": "Galerie d'art",
+      "heading": "Œuvres",
+      "headingHighlight": "créatives des enfants",
+      "description": "Découvrez les dessins d'enfants dans divers thèmes et styles",
+      "loading": "Chargement des images...",
+      "error": "Impossible de charger les rapports",
+      "errorDescription": "Vérifiez que le serveur est en cours d'exécution",
+      "empty": "Aucune image analysée pour le moment",
+      "emptyCta": "Lancer la première analyse",
+      "retry": "Réessayer",
+      "reportTitle": "Rapport d'analyse",
+      "analysisCategory": "Analyse",
+      "analysisSummary": "Dessin analysé par l'IA"
+    },
+    "cta": {
+      "title": "Commencez maintenant",
+      "description": "Analysez l'art des enfants avec l'IA pour une meilleure éducation artistique",
+      "button": "Commencer l'analyse"
+    },
+    "footer": {
+      "description": "Plateforme d'éducation artistique avec analyse IA",
+      "services": "Services",
+      "servicesArtAnalysis": "Analyse d'art",
+      "servicesArtClass": "Cours d'art",
+      "servicesFingerprint": "Consultation empreintes",
+      "inquiry": "Contact",
+      "inquiryContact": "Nous contacter",
+      "inquiryInfo": "Informations",
+      "legal": "Mentions légales",
+      "legalTerms": "Conditions d'utilisation",
+      "legalPrivacy": "Politique de confidentialité",
+      "legalPrivacyPolicy": "Politique de confidentialité",
+      "legalRefund": "Politique de remboursement",
+      "legalCookies": "Politique des cookies",
+      "copyright": "© 2024 Art AI Studio. Tous droits réservés."
+    }
+  },
+  "analysis": {
+    "title": "Analyse d'art",
+    "step1": "Télécharger l'image",
+    "step2": "Questions courtes",
+    "step3": "Rapport d'analyse IA",
+    "step4": "Réserver une consultation",
+    "upload": {
+      "title": "Téléchargez un dessin",
+      "description": "Téléchargez le dessin de votre enfant pour une analyse automatique par l'IA",
+      "dragDrop": "Glissez-déposez ou cliquez pour télécharger",
+      "supportedFormats": "Formats : JPG, PNG, WEBP",
+      "maxSize": "Taille max : 10 Mo",
+      "uploading": "Téléchargement...",
+      "error": "Échec du téléchargement",
+      "retry": "Réessayer"
+    },
+    "chat": {
+      "title": "Répondez à quelques questions",
+      "placeholder": "Saisissez votre réponse...",
+      "send": "Envoyer",
+      "thinking": "Réflexion...",
+      "error": "Échec de l'envoi du message"
+    },
+    "report": {
+      "title": "Rapport d'analyse IA",
+      "generating": "Génération du rapport...",
+      "download": "Télécharger le PDF",
+      "share": "Partager",
+      "loading": "Chargement du rapport...",
+      "error": "Impossible de charger le rapport"
+    },
+    "reservation": {
+      "title": "Réserver une consultation",
+      "date": "Date",
+      "time": "Heure",
+      "childName": "Nom de l'enfant",
+      "childAge": "Âge de l'enfant",
+      "parentPhone": "Contact du responsable",
+      "notes": "Remarques",
+      "submit": "Réserver",
+      "submitting": "Réservation...",
+      "success": "Réservation effectuée",
+      "error": "Échec de la réservation"
+    }
+  },
+  "errors": {
+    "reportLoad": "Impossible de charger le rapport",
+    "reportLoadRetry": "Une erreur s'est produite. Veuillez réessayer",
+    "imageLoad": "Erreur de chargement. Veuillez réessayer plus tard",
+    "unexpectedResponse": "Format de réponse inattendu"
+  }
+}

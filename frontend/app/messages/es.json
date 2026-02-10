@@ -1,0 +1,135 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ha ocurrido un error",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "all": "Todo",
+    "noData": "Sin datos"
+  },
+  "nav": {
+    "home": "Inicio",
+    "artClass": "Clase de arte",
+    "artAnalysis": "Análisis de arte",
+    "fingerprintAnalysis": "Análisis de huellas",
+    "consultation": "Consulta",
+    "contact": "Contacto",
+    "admin": "Admin",
+    "menu": "Menú",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "brandName": "Analyist AI Agent",
+    "brandNameMobile": "Estudio de arte"
+  },
+  "home": {
+    "hero": {
+      "badge": "Analiza y comprende el arte con IA",
+      "title": "Comprende la mente de tu hijo",
+      "titleHighlight": "a través de sus dibujos",
+      "description": "Con IA y experiencia 3D interactiva,",
+      "descriptionHighlight": "descubre el significado oculto en el arte de tu hijo",
+      "ctaStart": "Empezar análisis de arte",
+      "ctaGallery": "Ver galería",
+      "scrollIndicator": "Desplázate para más"
+    },
+    "gallery": {
+      "title": "Galería de arte",
+      "heading": "Obras",
+      "headingHighlight": "creativas de niños",
+      "description": "Explora dibujos infantiles en distintos temas y estilos",
+      "loading": "Cargando imágenes...",
+      "error": "No se pueden cargar los informes",
+      "errorDescription": "Comprueba si el servidor está en ejecución",
+      "empty": "Aún no hay imágenes analizadas",
+      "emptyCta": "Empezar el primer análisis",
+      "retry": "Reintentar",
+      "reportTitle": "Informe de análisis",
+      "analysisCategory": "Análisis",
+      "analysisSummary": "Dibujo analizado por IA"
+    },
+    "cta": {
+      "title": "Empieza ahora",
+      "description": "Analiza el arte infantil con IA para una mejor educación artística",
+      "button": "Empezar análisis de arte"
+    },
+    "footer": {
+      "description": "Plataforma de educación artística con análisis por IA",
+      "services": "Servicios",
+      "servicesArtAnalysis": "Análisis de arte",
+      "servicesArtClass": "Clase de arte",
+      "servicesFingerprint": "Consulta de huellas",
+      "inquiry": "Contacto",
+      "inquiryContact": "Contactar",
+      "inquiryInfo": "Información",
+      "legal": "Legal",
+      "legalTerms": "Términos de uso",
+      "legalPrivacy": "Política de privacidad",
+      "legalPrivacyPolicy": "Política de privacidad",
+      "legalRefund": "Política de reembolso",
+      "legalCookies": "Política de cookies",
+      "copyright": "© 2024 Art AI Studio. Todos los derechos reservados."
+    }
+  },
+  "analysis": {
+    "title": "Análisis de arte",
+    "step1": "Subir imagen",
+    "step2": "Preguntas breves",
+    "step3": "Informe de análisis IA",
+    "step4": "Reservar consulta",
+    "upload": {
+      "title": "Sube un dibujo",
+      "description": "Sube el dibujo de tu hijo y la IA lo analizará automáticamente",
+      "dragDrop": "Arrastra y suelta o haz clic para subir",
+      "supportedFormats": "Formatos: JPG, PNG, WEBP",
+      "maxSize": "Tamaño máx.: 10 MB",
+      "uploading": "Subiendo...",
+      "error": "Error al subir",
+      "retry": "Reintentar"
+    },
+    "chat": {
+      "title": "Responde unas preguntas breves",
+      "placeholder": "Escribe tu respuesta...",
+      "send": "Enviar",
+      "thinking": "Pensando...",
+      "error": "Error al enviar el mensaje"
+    },
+    "report": {
+      "title": "Informe de análisis IA",
+      "generating": "Generando informe...",
+      "download": "Descargar PDF",
+      "share": "Compartir",
+      "loading": "Cargando informe...",
+      "error": "No se puede cargar el informe"
+    },
+    "reservation": {
+      "title": "Reservar consulta",
+      "date": "Fecha",
+      "time": "Hora",
+      "childName": "Nombre del niño",
+      "childAge": "Edad del niño",
+      "parentPhone": "Contacto del responsable",
+      "notes": "Notas",
+      "submit": "Reservar",
+      "submitting": "Reservando...",
+      "success": "Reserva completada",
+      "error": "Error al reservar"
+    }
+  },
+  "errors": {
+    "reportLoad": "No se puede cargar el informe",
+    "reportLoadRetry": "Ha ocurrido un error. Por favor, reintenta",
+    "imageLoad": "Error al cargar. Por favor, reintenta más tarde",
+    "unexpectedResponse": "Formato de respuesta inesperado"
+  }
+}

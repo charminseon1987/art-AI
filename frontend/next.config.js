@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require("next-intl/plugin");
+
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -41,4 +45,4 @@ const nextConfig = {
   // @cloudflare/next-on-pages를 사용하므로 output 설정 제거
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "./i18n/routing";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
+const handleI18nRouting = createIntlMiddleware(routing);
+
 export async function middleware(request: NextRequest) {
-  // 관리자 페이지 접근 제어
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    // 로그인 페이지는 통과
-    if (request.nextUrl.pathname === "/admin/login") {
+  const pathname = request.nextUrl.pathname;
+
+  // 관리자 페이지 접근 제어 (locale 없이 /admin 사용)
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin/login") {
       return NextResponse.next();
     }
 
-    // 환경 변수가 설정되지 않은 경우 개발 모드에서는 통과
     if (!supabaseUrl || !supabaseAnonKey) {
       if (process.env.NODE_ENV === "development") {
         console.warn(
@@ -24,7 +28,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
 
-    // Supabase 클라이언트 생성
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
@@ -32,7 +35,6 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    // Authorization 헤더나 쿠키에서 토큰 가져오기
     const authHeader = request.headers.get("authorization");
     const accessToken =
       authHeader?.replace("Bearer ", "") ||
@@ -43,7 +45,6 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      // 토큰으로 사용자 정보 가져오기
       const {
         data: { user },
         error: userError,
@@ -53,28 +54,30 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/admin/login", request.url));
       }
 
-      // 사용자 프로필에서 역할 확인
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
 
       const userRole = profile?.role || "user";
-
-      // 관리자 또는 슈퍼바이저만 접근 가능
       if (userRole !== "admin" && userRole !== "supervisor") {
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(new URL("/ko", request.url));
       }
     } catch (error) {
       console.error("Middleware 인증 오류:", error);
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
+
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  return handleI18nRouting(request);
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/((?!api|_next|_vercel|.*\\..*).*)",
+  ],
 };

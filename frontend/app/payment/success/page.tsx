@@ -16,22 +16,28 @@ export default function PaymentSuccessPage() {
   const sessionId = searchParams.get("session_id");
   const paymentId = searchParams.get("payment_id");
   const checkoutId = searchParams.get("checkout_id");
+  const localeParam = searchParams.get("locale");
+
+  const getLocale = () => {
+    const supported = ["ko", "en", "fr", "es"];
+    if (localeParam && supported.includes(localeParam)) return localeParam;
+    if (typeof window !== "undefined") {
+      const pathParts = window.location.pathname.split("/").filter(Boolean);
+      const first = pathParts[0];
+      if (first && supported.includes(first)) return first;
+    }
+    return "ko";
+  };
 
   useEffect(() => {
     const verify = async () => {
-      // checkout_id가 있는 경우(결제 완료 또는 결제 생략) 분석 페이지로 리다이렉트
       if (checkoutId) {
         setVerified(true);
         setVerifying(false);
-        // 분석 페이지로 리다이렉트 (결제 완료 상태 포함)
-        // locale을 고려하여 경로 설정 (기본값: ko)
+        const locale = getLocale();
         setTimeout(() => {
-          // 현재 경로에서 locale 추출 또는 기본값 사용
-          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-          const pathParts = currentPath.split('/').filter(Boolean);
-          const locale = pathParts[0] === 'payment' ? 'ko' : (pathParts[0] || 'ko');
-          router.push(`/${locale}/analysis?payment_success=true&checkout_id=${checkoutId}`);
-        }, 1500); // 1.5초 후 리다이렉트 (사용자가 성공 메시지를 볼 수 있도록)
+          router.push(`/${locale}/counseling?payment_success=true&checkout_id=${checkoutId}`);
+        }, 1500);
         return;
       }
 
@@ -86,7 +92,7 @@ export default function PaymentSuccessPage() {
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="flex gap-4">
             <Link
-              href="/"
+              href={`/${getLocale()}`}
               className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-center"
             >
               홈으로
@@ -117,7 +123,7 @@ export default function PaymentSuccessPage() {
         </p>
         <div className="space-y-3">
           <Link
-            href="/"
+            href={`/${getLocale()}`}
             className="flex w-full px-6 py-3 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-600 hover:via-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl items-center justify-center gap-2"
           >
             홈으로 가기
