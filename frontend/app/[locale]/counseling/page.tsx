@@ -24,12 +24,14 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import ImageUpload from "@/components/ImageUpload";
 import ChatInterface from "@/components/ChatInterface";
 import ReportDisplay from "@/components/ReportDisplay";
 import { generateChatReport, downloadReportPDF, createReservation, type CreateReservationRequest, getReport } from "@/lib/api";
 
 export default function CounselingPage() {
+  const t = useTranslations("counseling");
   const params = useParams();
   const locale = (params?.locale as string) || 'ko';
   const searchParams = useSearchParams();
@@ -60,14 +62,14 @@ export default function CounselingPage() {
     return `${window.location.origin}/counseling?reportId=${reportData.report.id}`;
   };
 
-  const shareTitle = "AI 그림 관찰 리포트";
-  const shareDescription = "아이의 그림을 AI로 분석한 결과를 확인해보세요.";
+  const shareTitle = t("shareReportTitle");
+  const shareDescription = t("shareReportDescription");
 
   // URL 클립보드 복사
   const copyToClipboard = async () => {
     const url = getShareUrl();
     if (!url) {
-      alert("공유할 URL을 생성할 수 없습니다.");
+      alert(t("cannotGenerateUrl"));
       return;
     }
 
@@ -88,7 +90,7 @@ export default function CounselingPage() {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
-        alert("URL 복사에 실패했습니다. 수동으로 복사해주세요.");
+        alert(t("copyFailed"));
       }
       document.body.removeChild(textArea);
     }
@@ -143,12 +145,12 @@ export default function CounselingPage() {
             setReportData({ report: data.report });
             setStep(3); // 리포트 표시 단계로 이동
           } else {
-            alert("리포트를 찾을 수 없습니다.");
+            alert(t("reportNotFound"));
           }
         })
         .catch((error) => {
           console.error("리포트 로드 오류:", error);
-          alert("리포트를 불러오는 중 오류가 발생했습니다: " + error.message);
+          alert(`${t("reportLoadError")} ${error.message}`);
         })
         .finally(() => {
           setLoadingReport(false);
@@ -163,7 +165,7 @@ export default function CounselingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="bg-white p-8 rounded-lg shadow-md text-center">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">리포트를 불러오는 중...</p>
+            <p className="text-gray-600">{t("loadingReport")}</p>
           </div>
         </div>
       </div>

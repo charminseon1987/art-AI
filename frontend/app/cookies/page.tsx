@@ -234,6 +234,10 @@ export default function CookiesPage() {
                   (동의 시)
                 </li>
                 <li>
+                  <strong>Google Ads:</strong> 캠페인·전환 측정 및 리마케팅
+                  (마케팅 쿠키 동의 시)
+                </li>
+                <li>
                   <strong>Stripe:</strong> 결제 처리 (필수)
                 </li>
                 <li>

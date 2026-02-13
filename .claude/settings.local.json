@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(pnpm ls:*)",
+      "Bash(pnpm add:*)",
+      "WebSearch",
+      "Bash(npx opennextjs-cloudflare build:*)"
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Upload,
   Loader2,
@@ -23,6 +24,7 @@ interface ImageUploadProps {
 }
 
 export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
+  const t = useTranslations("analysis.upload");
   const pathname = usePathname();
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -64,9 +66,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         setUsageLimit(currentLimit);
 
         if (currentLimit.image_analysis_remaining <= 0) {
-          alert(
-            "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.",
-          );
+          alert(t("usage.limitReached") + "\n" + t("usage.limitDetail"));
           return;
         }
       }
@@ -80,14 +80,14 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       console.log("[ImageUpload] 인증 후 분석 시작:", {
         fileName: file.name,
         fileSize: file.size,
-        emotion: emotionValue || "없음",
+        emotion: emotionValue || "None",
       });
 
       const data = await analyzeImage(file, emotionValue);
 
       // 응답에서 success가 false이면 에러 처리
       if (data.success === false) {
-        const errorMessage = (data as any).error || "분석에 실패했습니다.";
+        const errorMessage = (data as any).error || t("error.analysis");
         console.error("[ImageUpload] 분석 실패:", errorMessage);
         alert(errorMessage);
         // 사용 횟수 다시 조회
@@ -111,7 +111,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       });
 
       setProgress(100);
-      setCurrentStep("완료!");
+      setCurrentStep(t("progress.steps.complete"));
 
       // 사용 횟수 다시 조회
       const response = await fetch("/api/usage-limits");
@@ -129,34 +129,35 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         onUploadComplete(data);
       }, 300);
     } catch (error: any) {
-      console.error("[ImageUpload] 업로드 에러:", {
+      console.error("[ImageUpload] 업로드 에러 상세:", {
         message: error.message,
-        error: error,
+        name: error.name,
         stack: error.stack,
-        response: error.response,
       });
 
-      // 에러 메시지 추출
-      let errorMessage = "분석 중 오류가 발생했습니다.";
+      let errorMessage = t("error.analysis");
+      const errorData = (error as any).response?.data || error;
 
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (typeof errorData === "object") {
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          if (errorData.error_type) {
-            errorMessage += ` (${errorData.error_type})`;
-          }
-        } else if (typeof errorData === "string") {
-          errorMessage = errorData;
+      if (typeof errorData === "object" && errorData !== null) {
+        errorMessage = errorData.error || errorData.message || errorMessage;
+        if (errorData.error_type) {
+          errorMessage += ` (${errorData.error_type})`;
         }
+      } else if (typeof errorData === "string") {
+        errorMessage = errorData;
       } else if (error.message) {
-        errorMessage = error.message;
+        if (
+          error.message.includes("timeout") ||
+          error.message.includes("network")
+        ) {
+          errorMessage = t("error.server");
+        } else {
+          errorMessage = error.message;
+        }
       }
 
       // 사용자에게 명확한 메시지 표시
-      alert(
-        `분석 중 오류가 발생했습니다.\n\n${errorMessage}\n\n문제가 계속되면 관리자에게 문의해주세요.`,
-      );
+      alert(`${t("error.analysis")}\n\n${errorMessage}`);
     } finally {
       setUploading(false);
       setProgress(0);
@@ -195,14 +196,14 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   useEffect(() => {
     if (uploading) {
       setProgress(0);
-      setCurrentStep("이미지 업로드 중...");
+      setCurrentStep(t("progress.title"));
 
       const steps = [
-        { time: 500, progress: 20, step: "이미지 업로드 중..." },
-        { time: 1500, progress: 40, step: "이미지 분석 중..." },
-        { time: 3000, progress: 60, step: "색상과 형태 분석 중..." },
-        { time: 4500, progress: 80, step: "감정 언어 분석 중..." },
-        { time: 6000, progress: 95, step: "리포트 생성 중..." },
+        { time: 500, progress: 20, step: t("progress.steps.uploading") },
+        { time: 1500, progress: 40, step: t("progress.steps.analyzing") },
+        { time: 3000, progress: 60, step: t("progress.steps.colorShape") },
+        { time: 4500, progress: 80, step: t("progress.steps.emotion") },
+        { time: 6000, progress: 95, step: t("progress.steps.generating") },
       ];
 
       steps.forEach(({ time, progress: prog, step }) => {
@@ -217,7 +218,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       setProgress(0);
       setCurrentStep("");
     }
-  }, [uploading]);
+  }, [uploading, t]);
 
   // 이미지 압축 함수
   const compressImage = (file: File, maxSizeMB: number = 2): Promise<File> => {
@@ -311,15 +312,13 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
     // 사용 횟수 확인
     if (usageLimit && usageLimit.image_analysis_remaining <= 0) {
-      alert(
-        "분석회수를 초과했습니다. 더 자세한 상담은 선생님과의 상담예약이 필요합니다.",
-      );
+      alert(t("usage.limitReached") + "\n" + t("usage.limitDetail"));
       return;
     }
 
     try {
       // 1. 이미지 압축 (5MB 이상인 경우)
-      let fileToStore = selectedFile;
+      let fileToUpload = selectedFile;
       const maxSizeMB = 5;
 
       if (selectedFile.size > maxSizeMB * 1024 * 1024) {
@@ -327,60 +326,21 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
           originalSize: selectedFile.size,
           maxSizeMB,
         });
-        fileToStore = await compressImage(selectedFile, maxSizeMB);
+        fileToUpload = await compressImage(selectedFile, maxSizeMB);
         console.log("[ImageUpload] 이미지 압축 완료:", {
           originalSize: selectedFile.size,
-          compressedSize: fileToStore.size,
+          compressedSize: fileToUpload.size,
         });
       }
 
-      // 2. 압축된 이미지를 base64로 변환
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          // data:image/jpeg;base64, 부분 제거하고 base64만 저장
-          const base64 = result.split(",")[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(fileToStore);
-      });
-
-      // 3. 파일 정보 저장
-      const fileData = {
-        name: selectedFile.name,
-        originalSize: selectedFile.size,
-        compressedSize: fileToStore.size,
-        type: fileToStore.type,
-        base64: base64Image,
-        emotion: userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined,
-        timestamp: Date.now(),
-      };
-
-      // 2MB 미만이면 sessionStorage 사용, 이상이면 IndexedDB 사용
-      if (base64Image.length < 2 * 1024 * 1024) {
-        // sessionStorage 사용
-        sessionStorage.setItem("pendingAnalysis", JSON.stringify(fileData));
-        console.log("[ImageUpload] 파일 정보를 sessionStorage에 저장");
-      } else {
-        // IndexedDB 사용
-        await saveToIndexedDB("pendingAnalysis", fileData);
-        console.log("[ImageUpload] 파일 정보를 IndexedDB에 저장");
-      }
-
-      // 4. 결제 없이 분석 페이지로 이동 (저장된 파일로 분석 시작)
-      const segments = (pathname?.split("?")[0] || "").split("/").filter(Boolean);
-      const locale =
-        segments[0] && /^[a-z]{2}$/.test(segments[0]) ? segments[0] : "ko";
-      const analysisPath = `/${locale}/counseling`;
-      const redirectUrl = `${analysisPath}?payment_success=true&checkout_id=no_payment`;
-      console.log("[ImageUpload] 분석 페이지로 이동:", redirectUrl);
-      window.location.href = redirectUrl;
+      // 2. 바로 분석 시작
+      const emotionValue =
+        userEmotion && userEmotion !== "선택 안함" ? userEmotion : undefined;
+      await handleUploadAfterAuth(fileToUpload, emotionValue);
     } catch (error: any) {
-      console.error("[ImageUpload] 결제 준비 오류:", error);
+      console.error("[ImageUpload] 분석 오류:", error);
       alert(
-        `결제 준비 중 오류가 발생했습니다.\n\n${error.message || "알 수 없는 오류"}\n\n다시 시도해주세요.`,
+        `${t("error.analysis")}\n\n${error.message || t("error.unknown")}\n\n${t("error.retry") || "Please try again."}`,
       );
     }
   };
@@ -399,18 +359,18 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          그림 파일 선택
+          {t("selectFile")}
         </label>
         <div className="flex items-center justify-center w-full">
           <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
               <Upload className="w-10 h-10 mb-3 text-gray-400" />
               <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">클릭하여 업로드</span> 또는
-                드래그 앤 드롭
+                <span className="font-semibold">{t("clickToUpload")}</span>{" "}
+                {t("dragDrop")}
               </p>
               <p className="text-xs text-gray-500">
-                PNG, JPG, JPEG (최대 10MB)
+                {t("supportedFormats")} ({t("maxSize")})
               </p>
             </div>
             <input
@@ -423,51 +383,52 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          현재 감정 선택 (선택사항)
-        </label>
-        <select
-          value={userEmotion}
-          onChange={(e) => setUserEmotion(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option>선택 안함</option>
-          <option>기쁨</option>
-          <option>슬픔</option>
-          <option>화남</option>
-          <option>불안</option>
-          <option>평온</option>
-          <option>혼란</option>
-          <option>기타</option>
-        </select>
-      </div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {t("currentEmotion")}
+      </label>
+      <select
+        value={userEmotion}
+        onChange={(e) => setUserEmotion(e.target.value)}
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+      >
+        <option value="">{t("emotions.none")}</option>
+        <option value="기쁨">{t("emotions.joy")}</option>
+        <option value="슬픔">{t("emotions.sadness")}</option>
+        <option value="화남">{t("emotions.anger")}</option>
+        <option value="불안">{t("emotions.anxiety")}</option>
+        <option value="평온">{t("emotions.calm")}</option>
+        <option value="혼란">{t("emotions.confusion")}</option>
+        <option value="기타">{t("emotions.other")}</option>
+      </select>
 
-      {/* 사용 횟수 표시 */}
-      {usageLimit !== null && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-sm text-blue-800">
-            <span className="font-semibold">남은 분석 횟수:</span>
-            <span className="font-bold text-blue-600">
-              {usageLimit.image_analysis_remaining} /{" "}
-              {usageLimit.image_analysis_limit}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* 사용 횟수 초과 안내 */}
-      {usageLimit !== null && usageLimit.image_analysis_remaining <= 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-red-800">
-              <p className="font-semibold mb-1">분석회수를 초과했습니다.</p>
-              <p>더 자세한 상담은 선생님과의 상담예약이 필요합니다.</p>
+      {
+        usageLimit !== null && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-sm text-blue-800">
+              <span className="font-semibold">{t("usage.remaining")}</span>
+              <span className="font-bold text-blue-600">
+                {usageLimit.image_analysis_remaining} /{" "}
+                {usageLimit.image_analysis_limit}
+              </span>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* 사용 횟수 초과 안내 */}
+      {
+        usageLimit !== null && usageLimit.image_analysis_remaining <= 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-red-800">
+                <p className="font-semibold mb-1">{t("usage.limitReached")}</p>
+                <p>{t("usage.limitDetail")}</p>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       <button
         onClick={handleUpload}
@@ -481,162 +442,155 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         {uploading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            분석 중...
+            {t("button.analyzing")}
           </>
         ) : (
           <>
             <Sparkles className="w-5 h-5" />
-            분석 시작
+            {t("button.start")}
           </>
         )}
       </button>
 
       {/* 프로그레스바 모달 팝업 */}
-      {uploading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform animate-scaleIn">
-            {/* 헤더 */}
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full mb-4">
-                {progress < 30 ? (
-                  <ImageIcon className="w-8 h-8 text-rose-500 animate-pulse" />
-                ) : progress < 70 ? (
-                  <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
-                ) : (
-                  <FileText className="w-8 h-8 text-pink-500 animate-pulse" />
-                )}
-              </div>
-              <h3 className="text-2xl font-bold text-stone-800 mb-2">
-                AI 분석 중
-              </h3>
-              <p className="text-sm text-stone-600">
-                아이의 그림을 꼼꼼히 분석하고 있습니다
-              </p>
-            </div>
-
-            {/* 프로그레스바 */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-stone-700">
-                  {currentStep}
-                </span>
-                <span className="text-lg font-bold text-rose-600">
-                  {progress}%
-                </span>
+      {
+        uploading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform animate-scaleIn">
+              {/* 헤더 */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full mb-4">
+                  {progress < 30 ? (
+                    <ImageIcon className="w-8 h-8 text-rose-500 animate-pulse" />
+                  ) : progress < 70 ? (
+                    <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />
+                  ) : (
+                    <FileText className="w-8 h-8 text-pink-500 animate-pulse" />
+                  )}
+                </div>
+                <h3 className="text-2xl font-bold text-stone-800 mb-2">
+                  {t("progress.title")}
+                </h3>
+                <p className="text-sm text-stone-600">
+                  {t("progress.subtitle")}
+                </p>
               </div>
 
-              {/* 프로그레스바 배경 */}
-              <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
-                {/* 프로그레스바 채우기 */}
-                <div
-                  className="h-4 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400 shadow-lg relative overflow-hidden"
-                  style={{ width: `${progress}%` }}
-                >
-                  {/* 반짝이는 애니메이션 효과 */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+              {/* 프로그레스바 */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-stone-700">
+                    {currentStep}
+                  </span>
+                  <span className="text-lg font-bold text-rose-600">
+                    {progress}%
+                  </span>
                 </div>
-              </div>
-            </div>
 
-            {/* 분석 단계 표시 */}
-            <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 rounded-xl border border-rose-200">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-rose-500 flex-shrink-0" />
-                <div className="text-sm text-stone-700">
-                  <p className="font-medium">잠시만 기다려주세요</p>
-                  <p className="text-xs text-stone-600 mt-1">
-                    AI가 그림의 색상, 형태, 감정을 분석하고 있습니다
-                  </p>
+                {/* 프로그레스바 배경 */}
+                <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-4 shadow-inner overflow-hidden">
+                  {/* 프로그레스바 채우기 */}
+                  <div
+                    className="h-4 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400 shadow-lg relative overflow-hidden"
+                    style={{ width: `${progress}%` }}
+                  >
+                    {/* 반짝이는 애니메이션 효과 */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-40 animate-shimmer"></div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* 진행 단계 체크리스트 */}
-            <div className="mt-4 space-y-2">
-              <div
-                className={`flex items-center gap-2 text-xs ${
-                  progress >= 20 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                    progress >= 20 ? "bg-green-500" : "bg-gray-300"
-                  }`}
-                >
-                  {progress >= 20 && (
-                    <span className="text-white text-xs">✓</span>
-                  )}
+              {/* 분석 단계 표시 */}
+              <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 rounded-xl border border-rose-200">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-rose-500 flex-shrink-0" />
+                  <div className="text-sm text-stone-700">
+                    <p className="font-medium">{t("progress.wait")}</p>
+                    <p className="text-xs text-stone-600 mt-1">
+                      {t("progress.waitDetail")}
+                    </p>
+                  </div>
                 </div>
-                <span>이미지 업로드</span>
               </div>
-              <div
-                className={`flex items-center gap-2 text-xs ${
-                  progress >= 40 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
+
+              {/* 진행 단계 체크리스트 */}
+              <div className="mt-4 space-y-2">
                 <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                    progress >= 40 ? "bg-green-500" : "bg-gray-300"
-                  }`}
+                  className={`flex items-center gap-2 text-xs ${progress >= 20 ? "text-green-600" : "text-gray-400"
+                    }`}
                 >
-                  {progress >= 40 && (
-                    <span className="text-white text-xs">✓</span>
-                  )}
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 20 ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                  >
+                    {progress >= 20 && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                  <span>{t("progress.checklist.upload")}</span>
                 </div>
-                <span>이미지 분석</span>
-              </div>
-              <div
-                className={`flex items-center gap-2 text-xs ${
-                  progress >= 60 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
                 <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                    progress >= 60 ? "bg-green-500" : "bg-gray-300"
-                  }`}
+                  className={`flex items-center gap-2 text-xs ${progress >= 40 ? "text-green-600" : "text-gray-400"
+                    }`}
                 >
-                  {progress >= 60 && (
-                    <span className="text-white text-xs">✓</span>
-                  )}
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 40 ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                  >
+                    {progress >= 40 && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                  <span>{t("progress.checklist.analysis")}</span>
                 </div>
-                <span>색상과 형태 분석</span>
-              </div>
-              <div
-                className={`flex items-center gap-2 text-xs ${
-                  progress >= 80 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
                 <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                    progress >= 80 ? "bg-green-500" : "bg-gray-300"
-                  }`}
+                  className={`flex items-center gap-2 text-xs ${progress >= 60 ? "text-green-600" : "text-gray-400"
+                    }`}
                 >
-                  {progress >= 80 && (
-                    <span className="text-white text-xs">✓</span>
-                  )}
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 60 ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                  >
+                    {progress >= 60 && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                  <span>{t("progress.checklist.colorShape")}</span>
                 </div>
-                <span>감정 언어 분석</span>
-              </div>
-              <div
-                className={`flex items-center gap-2 text-xs ${
-                  progress >= 95 ? "text-green-600" : "text-gray-400"
-                }`}
-              >
                 <div
-                  className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                    progress >= 95 ? "bg-green-500" : "bg-gray-300"
-                  }`}
+                  className={`flex items-center gap-2 text-xs ${progress >= 80 ? "text-green-600" : "text-gray-400"
+                    }`}
                 >
-                  {progress >= 95 && (
-                    <span className="text-white text-xs">✓</span>
-                  )}
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 80 ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                  >
+                    {progress >= 80 && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                  <span>{t("progress.checklist.emotion")}</span>
                 </div>
-                <span>리포트 생성</span>
+                <div
+                  className={`flex items-center gap-2 text-xs ${progress >= 95 ? "text-green-600" : "text-gray-400"
+                    }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${progress >= 95 ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                  >
+                    {progress >= 95 && (
+                      <span className="text-white text-xs">✓</span>
+                    )}
+                  </div>
+                  <span>{t("progress.checklist.report")}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+
+        )
+      }
+    </div >
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useState, useEffect } from "react";
 import {
   Image as ImageIcon,
@@ -23,13 +25,14 @@ interface ClassWork {
 }
 
 const CATEGORIES = [
-  { id: 0, name: "유아", label: "유아" },
-  { id: 1, name: "초등", label: "초등" },
-  { id: 2, name: "중등", label: "중등" },
-  { id: 3, name: "애니", label: "애니" },
+  { id: 0, key: "toddler" },
+  { id: 1, key: "elementary" },
+  { id: 2, key: "middle" },
+  { id: 3, key: "anime" },
 ];
 
 export default function ClassPage() {
+  const t = useTranslations("class");
   const [works, setWorks] = useState<ClassWork[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -71,12 +74,12 @@ export default function ClassPage() {
     const authenticated =
       sessionStorage.getItem("admin_authenticated") === "true";
     if (!authenticated) {
-      alert("관리자만 작품을 삭제할 수 있습니다.");
+      alert(t("admin.onlyDelete"));
       return;
     }
 
     // 삭제 확인
-    if (!confirm("정말 이 작품을 삭제하시겠습니까?")) {
+    if (!confirm(t("admin.confirmDelete"))) {
       return;
     }
 
@@ -97,7 +100,7 @@ export default function ClassPage() {
 
       const data = await response.json();
       if (data.success) {
-        alert("작품이 삭제되었습니다.");
+        alert(t("admin.deleteSuccess"));
         loadWorks(); // 목록 새로고침
       } else {
         throw new Error(data.error || "삭제 실패");
@@ -105,7 +108,7 @@ export default function ClassPage() {
     } catch (error: any) {
       console.error("삭제 오류:", error);
       alert(
-        "삭제 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류")
+        t("admin.deleteError") + ": " + (error.message || t("upload.unknownError"))
       );
     }
   };
@@ -126,10 +129,10 @@ export default function ClassPage() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-            미술 수업 작품 갤러리
+            {t("title")}
           </h1>
           <p className="text-lg text-gray-600">
-            아이들의 창의적인 작품들을 만나보세요
+            {t("subtitle")}
           </p>
         </div>
 
@@ -140,13 +143,12 @@ export default function ClassPage() {
               <button
                 key={category.id}
                 onClick={() => setActiveTab(category.id)}
-                className={`px-6 py-3 font-semibold transition-all relative ${
-                  activeTab === category.id
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
+                className={`px-6 py-3 font-semibold transition-all relative ${activeTab === category.id
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-800"
+                  }`}
               >
-                {category.label}
+                {t(`categories.${category.key}`)}
                 {isAdmin && (
                   <button
                     onClick={(e) => {
@@ -156,14 +158,14 @@ export default function ClassPage() {
                         sessionStorage.getItem("admin_authenticated") ===
                         "true";
                       if (!authenticated) {
-                        alert("관리자만 작품을 등록할 수 있습니다.");
+                        alert(t("admin.onlyUpload"));
                         return;
                       }
                       setActiveTab(category.id);
                       setShowUploadModal(true);
                     }}
                     className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                    title={`${category.label} 작품 추가 (관리자 전용)`}
+                    title={t("admin.addTooltip")}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -181,7 +183,7 @@ export default function ClassPage() {
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg"
             >
               <Upload className="w-5 h-5" />
-              작품 등록하기
+              {t("upload.button")}
             </button>
           </div>
         )}
@@ -189,13 +191,13 @@ export default function ClassPage() {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">로딩 중...</p>
+            <p className="mt-4 text-gray-600">{t("loading")}</p>
           </div>
         ) : filteredWorks.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <ImageIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">
-              {CATEGORIES[activeTab].label} 카테고리에 등록된 작품이 없습니다.
+              {t("noWorks", { category: t(`categories.${CATEGORIES[activeTab].key}`) })}
             </p>
             {isAdmin && (
               <button
@@ -203,7 +205,7 @@ export default function ClassPage() {
                 className="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                작품 등록하기
+                {t("upload.button")}
               </button>
             )}
           </div>
@@ -232,7 +234,7 @@ export default function ClassPage() {
                       <button
                         onClick={(e) => handleDeleteWork(work.id, e)}
                         className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
-                        title="작품 삭제"
+                        title={t("admin.deleteTooltip")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -292,6 +294,7 @@ function UploadModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useTranslations("class");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [images, setImages] = useState<File[]>([]);
@@ -343,7 +346,7 @@ function UploadModal({
     }
 
     if (!thumbnail || !ageRange || !title) {
-      alert("섬네일, 나이, 제목은 필수입니다.");
+      alert(t("upload.required"));
       return;
     }
 
@@ -376,21 +379,22 @@ function UploadModal({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `서버 오류 (${response.status})`);
+        throw new Error(errorData.error || `Server Error (${response.status})`);
       }
 
       const data = await response.json();
 
       if (data.success) {
-        alert("작품이 등록되었습니다!");
+        alert(t("admin.uploadSuccess"));
         onSuccess();
       } else {
-        throw new Error(data.error || "알 수 없는 오류");
+        throw new Error(data.error || "Unknown Error");
       }
     } catch (error: any) {
       console.error("업로드 오류:", error);
+      console.error("업로드 오류:", error);
       alert(
-        "업로드 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류")
+        t("admin.uploadError") + ": " + (error.message || "Unknown Error")
       );
     } finally {
       setUploading(false);
@@ -403,7 +407,7 @@ function UploadModal({
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">
-              {CATEGORIES[category].label} 작품 등록
+              {t(`categories.${CATEGORIES[category].key}`)} {t("upload.title")}
             </h2>
             <button
               onClick={onClose}
@@ -417,7 +421,7 @@ function UploadModal({
             {/* 섬네일 업로드 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                섬네일 이미지 <span className="text-red-500">*</span>
+                {t("upload.thumbnail")} <span className="text-red-500">*</span>
               </label>
               {thumbnailPreview ? (
                 <div className="relative w-64 h-64 border-2 border-gray-300 rounded-lg overflow-hidden">
@@ -440,7 +444,7 @@ function UploadModal({
               ) : (
                 <label className="flex flex-col items-center justify-center w-64 h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500">
                   <Upload className="w-10 h-10 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-600">섬네일 업로드</span>
+                  <span className="text-sm text-gray-600">{t("upload.uploadThumbnail")}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -455,13 +459,13 @@ function UploadModal({
             {/* 나이 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                나이 <span className="text-red-500">*</span>
+                {t("upload.age")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={ageRange}
                 onChange={(e) => setAgeRange(e.target.value)}
-                placeholder="예: 5-7세, 초등 1-2학년"
+                placeholder={t("upload.agePlaceholder")}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white"
                 required
               />
@@ -470,13 +474,13 @@ function UploadModal({
             {/* 제목 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                제목 <span className="text-red-500">*</span>
+                {t("upload.workTitle")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="작품 제목을 입력하세요"
+                placeholder={t("upload.titlePlaceholder")}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white"
                 required
               />
@@ -485,12 +489,12 @@ function UploadModal({
             {/* 설명 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                설명 (선택사항)
+                {t("upload.description")}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="작품에 대한 설명을 입력하세요"
+                placeholder={t("upload.descriptionPlaceholder")}
                 rows={4}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white"
               />
@@ -499,7 +503,7 @@ function UploadModal({
             {/* 상세 이미지 업로드 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                상세 페이지 이미지 (여러 개 가능)
+                {t("upload.detailImages")}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {imagePreviews.map((preview, idx) => (
@@ -525,7 +529,7 @@ function UploadModal({
               <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500">
                 <div className="text-center">
                   <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <span className="text-sm text-gray-600">이미지 추가</span>
+                  <span className="text-sm text-gray-600">{t("upload.addImage")}</span>
                 </div>
                 <input
                   type="file"
@@ -547,12 +551,12 @@ function UploadModal({
                 {uploading ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    업로드 중...
+                    {t("upload.uploading")}
                   </>
                 ) : (
                   <>
                     <Upload className="w-5 h-5" />
-                    작품 등록
+                    {t("upload.submit")}
                   </>
                 )}
               </button>
@@ -561,7 +565,7 @@ function UploadModal({
                 onClick={onClose}
                 className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                취소
+                {t("upload.cancel")}
               </button>
             </div>
           </form>

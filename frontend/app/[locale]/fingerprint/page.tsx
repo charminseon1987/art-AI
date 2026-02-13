@@ -17,7 +17,6 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
 import { getCurrentUser } from "@/lib/auth";
 import { KAKAO_CHANNEL_URL } from "@/lib/constants";
@@ -45,7 +44,11 @@ interface FingerprintData {
   };
 }
 
+import { useTranslations } from "next-intl";
+
 export default function FingerprintPage() {
+  const t = useTranslations("fingerprint");
+
   const [fingerprintData, setFingerprintData] =
     useState<FingerprintData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,8 +165,7 @@ export default function FingerprintPage() {
       setMessages([
         {
           role: "assistant",
-          content:
-            "안녕하세요! 지문 분석에 관심을 가져주셔서 감사합니다. 궁금한 점이 있으시면 언제든지 문의해주세요. 😊",
+          content: t("chatWelcome"),
           timestamp: new Date(),
         },
       ]);
@@ -185,9 +187,9 @@ export default function FingerprintPage() {
     // 간단한 자동 응답 (실제로는 API 호출)
     setTimeout(() => {
       const responses = [
-        "지문 분석에 대해 궁금하신 점이 있으시군요! 자세한 내용은 분석 페이지에서 확인하실 수 있습니다.",
-        "지문 분석은 하워드 가드너의 다중지능 이론을 바탕으로 진행됩니다.",
-        "더 자세한 문의가 필요하시면 카카오톡이나 네이버 예약을 통해 문의해주세요.",
+        t("chatResponse1"),
+        t("chatResponse2"),
+        t("chatResponse3"),
       ];
       const randomResponse =
         responses[Math.floor(Math.random() * responses.length)];
@@ -229,13 +231,13 @@ export default function FingerprintPage() {
 
   const handleAnalyzeFingerprint = async () => {
     if (!selectedFile) {
-      showError("엄지 지문 사진을 선택해주세요.");
+      showError(t("selectThumbPhoto"));
       return;
     }
 
     // 파일 크기 확인 (10MB 제한)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      showError("파일 크기는 10MB 이하여야 합니다.");
+      showError(t("fileSizeLimit"));
       return;
     }
 
@@ -244,7 +246,7 @@ export default function FingerprintPage() {
     // 사용 횟수 확인
     if (usageLimit && usageLimit.fingerprint_analysis_remaining <= 0) {
       showError(
-        "분석회수를 초과했습니다. 더 자세한 대화는 선생님과의 예약이 필요합니다."
+        `${t("usageExceeded")} ${t("usageExceededDetail")}`
       );
       return;
     }
@@ -274,16 +276,16 @@ export default function FingerprintPage() {
           errorMessage =
             errorData.error ||
             errorData.message ||
-            "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
-          
+            t("notFingerprint");
+
           // 지문 관련 에러 메시지 정규화
           if (errorMessage.includes("엄지 손가락")) {
-            errorMessage = "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
+            errorMessage = t("notFingerprint");
           }
-          
+
           console.error("서버 오류 응답:", errorData);
         } catch (e) {
-          errorMessage = "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
+          errorMessage = t("notFingerprint");
         }
         throw new Error(errorMessage);
       }
@@ -294,7 +296,7 @@ export default function FingerprintPage() {
       // 사용 횟수 초과 응답 처리
       if (data.success === false && data.error) {
         let errorMessage = data.error;
-        
+
         // 지문 관련 에러 메시지 정규화
         if (
           errorMessage.includes("지문") ||
@@ -302,10 +304,10 @@ export default function FingerprintPage() {
           errorMessage.includes("지문사진")
         ) {
           if (errorMessage.includes("엄지 손가락")) {
-            errorMessage = "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
+            errorMessage = t("notFingerprint");
           }
         }
-        
+
         showError(errorMessage);
         // 사용 횟수 다시 조회
         const usageResponse = await fetch("/api/usage-limits");
@@ -342,12 +344,12 @@ export default function FingerprintPage() {
           }
         }
       } else {
-        throw new Error(data.error || "분석 결과를 받지 못했습니다");
+        throw new Error(data.error || t("noAnalysisResult"));
       }
     } catch (error: any) {
       console.error("분석 오류 상세:", error);
-      let errorMessage = error.message || "알 수 없는 오류가 발생했습니다";
-      
+      let errorMessage = error.message || t("unknownError");
+
       // 네트워크 에러나 fetch 실패 시 지문 관련 에러로 처리
       if (
         errorMessage.includes("fetch failed") ||
@@ -355,9 +357,9 @@ export default function FingerprintPage() {
         errorMessage.includes("NetworkError") ||
         errorMessage.includes("Network request failed")
       ) {
-        errorMessage = "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
+        errorMessage = t("notFingerprint");
       }
-      
+
       // 지문 관련 에러 메시지 정규화
       if (
         errorMessage.includes("지문") ||
@@ -366,10 +368,10 @@ export default function FingerprintPage() {
       ) {
         // 서버에서 온 지문 관련 에러 메시지를 사용자가 원하는 형식으로 변환
         if (errorMessage.includes("엄지 손가락")) {
-          errorMessage = "지문사진이 아닙니다. 지문사진을 업로드해주세요.";
+          errorMessage = t("notFingerprint");
         }
       }
-      
+
       showError(errorMessage);
       setIsAnalysisModalOpen(false);
     } finally {
@@ -394,13 +396,13 @@ export default function FingerprintPage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white px-4 py-2 rounded-full text-sm font-semibold mb-4 shadow-md">
             <Brain className="w-4 h-4" />
-            AI 기반 지문 분석
+            {t("badge")}
           </div>
           <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 bg-clip-text text-transparent">
-            하워드 가드너 지문상담
+            {t("title")}
           </h1>
           <h2 className="text-xl md:text-2xl text-gray-700">
-            다중지능 이론 기반 아이 맞춤 상담
+            {t("subtitle")}
           </h2>
         </div>
 
@@ -411,39 +413,34 @@ export default function FingerprintPage() {
               <Brain className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent">
-              하워드 가드너의 다중지능 이론
+              {t("gardnerTheoryTitle")}
             </h2>
           </div>
           <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-            하워드 가드너(Howard Gardner)는 1983년 '마음의 틀(Frames of
-            Mind)'에서 기존의 단일 지능 개념을 비판하고, 인간은 8가지(또는
-            9가지) 서로 다른 지능을 가지고 있다고 제시했습니다.
+            {t("gardnerTheoryDescription")}
           </p>
           <ul className="space-y-3 text-gray-700">
             <li className="bg-pink-50 p-4 rounded-xl hover:bg-pink-100 transition-colors duration-200 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-pink-600 mt-1 flex-shrink-0" />
               <span>
-                모든 사람은 8가지 지능을 모두 가지고 있지만, 각 지능의 발달
-                정도는 다릅니다
+                {t("gardnerPoint1")}
               </span>
             </li>
             <li className="bg-pink-50 p-4 rounded-xl hover:bg-pink-100 transition-colors duration-200 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-pink-600 mt-1 flex-shrink-0" />
               <span>
-                지능은 고정된 것이 아니라 교육과 경험을 통해 발달시킬 수
-                있습니다
+                {t("gardnerPoint2")}
               </span>
             </li>
             <li className="bg-pink-50 p-4 rounded-xl hover:bg-pink-100 transition-colors duration-200 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-pink-600 mt-1 flex-shrink-0" />
               <span>
-                각 지능은 독립적으로 작동하며, 서로 다른 방식으로 조합될 수
-                있습니다
+                {t("gardnerPoint3")}
               </span>
             </li>
             <li className="bg-pink-50 p-4 rounded-xl hover:bg-pink-100 transition-colors duration-200 flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-pink-600 mt-1 flex-shrink-0" />
-              <span>아이의 강점 지능을 파악하면 맞춤형 교육이 가능합니다</span>
+              <span>{t("gardnerPoint4")}</span>
             </li>
           </ul>
         </div>
@@ -455,54 +452,43 @@ export default function FingerprintPage() {
               <Search className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-fuchsia-600 to-purple-600 bg-clip-text text-transparent">
-              지문 분석이란?
+              {t("whatIsTitle")}
             </h2>
           </div>
           <p className="text-lg text-gray-700 mb-4 leading-relaxed">
-            하워드 가드너(Howard Gardner)의 <strong>다중지능 이론</strong>을
-            바탕으로 한 지문 분석입니다.
+            {t("whatIsDescription")}
           </p>
 
           {/* 지문 형성 과정 이미지 및 설명 */}
           <div className="bg-gradient-to-br from-pink-50 to-rose-50 border-l-4 border-pink-500 p-6 rounded-r-xl mb-6 shadow-md">
             <h3 className="text-xl font-bold text-gray-800 mb-4">
-              지문이 처음 생기는 곳
+              {t("formationTitle")}
             </h3>
             <div className="grid md:grid-cols-2 gap-6 items-center">
               <div>
                 <p className="text-lg text-gray-700 leading-relaxed mb-4">
-                  지문은 <strong>태아 시기 임신 13주부터</strong> 손가락
-                  끝부분에 처음 생기기 시작합니다.
+                  {t("formationDesc1")}
                 </p>
                 <p className="text-lg text-gray-700 leading-relaxed mb-4">
-                  지문은 세 곳에서 처음 형성됩니다:
+                  {t("formationDesc2")}
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4 mb-4">
-                  <li>손가락 끝부분</li>
-                  <li>중앙 부분</li>
-                  <li>관절 바로 위 부분</li>
+                  <li>{t("formationPoint1")}</li>
+                  <li>{t("formationPoint2")}</li>
+                  <li>{t("formationPoint3")}</li>
                 </ul>
                 <p className="text-lg text-gray-700 leading-relaxed mb-4">
-                  이 세 곳에서 형성된 지문이 빈 공간을 채우며 퍼져나가 완전한
-                  지문 패턴을 만듭니다. 완전히 형성된 지문은{" "}
-                  <strong>
-                    아치형(Arch), 고리형(Loop), 나선형(Whorl), 복합형
-                    (Composite)
-                  </strong>{" "}
-                  네 가지 주요 패턴으로 분류됩니다.
+                  {t("formationDesc3")}
                 </p>
                 <p className="text-lg leading-relaxed font-semibold text-pink-700">
-                  ⚠️ 한번 형성된 지문 패턴은 평생 변하지 않습니다.
+                  ⚠️ {t("formationWarning")}
                 </p>
               </div>
             </div>
           </div>
 
           <p className="text-lg text-gray-700 leading-relaxed">
-            아이의 손가락 지문을 분석하여 8가지 지능 유형(언어지능,
-            논리수학지능, 공간지능, 음악지능, 신체운동지능, 대인지능,
-            자기성찰지능, 자연지능) 중 어떤 영역이 발달되어 있는지 파악하고,
-            아이에게 맞는 학습 방법과 진로 방향을 제안합니다.
+            {t("intelligenceDescription")}
           </p>
         </div>
 
@@ -513,7 +499,7 @@ export default function FingerprintPage() {
               <Target className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              지문 분석 프로세스
+              {t("processTitle")}
             </h2>
           </div>
           <ol className="space-y-4 text-gray-700">
@@ -522,7 +508,7 @@ export default function FingerprintPage() {
                 1
               </span>
               <span className="pt-1.5">
-                10개 손가락의 지문을 촬영하고 패턴을 분석합니다
+                {t("processStep1")}
               </span>
             </li>
             <li className="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100 p-5 rounded-xl hover:shadow-md transition-all duration-300 flex items-start gap-4">
@@ -530,8 +516,7 @@ export default function FingerprintPage() {
                 2
               </span>
               <span className="pt-1.5">
-                각 손가락의 지문 패턴을 분류합니다 (나선형, 고리형, 호형,
-                복합형)
+                {t("processStep2")}
               </span>
             </li>
             <li className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl hover:shadow-md transition-all duration-300 flex items-start gap-4">
@@ -539,7 +524,7 @@ export default function FingerprintPage() {
                 3
               </span>
               <span className="pt-1.5">
-                패턴의 분포와 조합을 분석하여 강점 지능을 파악합니다
+                {t("processStep3")}
               </span>
             </li>
             <li className="bg-gradient-to-br from-rose-50 to-rose-100 p-5 rounded-xl hover:shadow-md transition-all duration-300 flex items-start gap-4">
@@ -547,14 +532,13 @@ export default function FingerprintPage() {
                 4
               </span>
               <span className="pt-1.5">
-                분석 결과를 바탕으로 맞춤형 학습 방법을 제안합니다
+                {t("processStep4")}
               </span>
             </li>
           </ol>
           <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-lg shadow-sm">
             <p className="text-sm text-yellow-800 font-semibold">
-              ⚠️ 지문 분석은 참고 자료이며, 아이의 실제 행동과 관찰을 함께
-              고려해야 합니다
+              ⚠️ {t("processWarning")}
             </p>
           </div>
         </div>
@@ -709,12 +693,11 @@ export default function FingerprintPage() {
               <Brain className="w-7 h-7 text-white animate-pulse" />
             </div>
             <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-600 via-fuchsia-600 to-purple-600 bg-clip-text text-transparent">
-              AI 주성향 파악
+              {t("aiAnalysisTitle")}
             </h2>
           </div>
           <p className="text-lg text-gray-700 mb-6 font-medium">
-            엄지 손가락의 지문 사진을 업로드하면 AI가 지문 패턴을 분석하여 주된
-            성격 특성을 파악해드립니다.
+            {t("aiAnalysisDescription")}
           </p>
 
           <div className="border-2 border-dashed border-pink-300 bg-gradient-to-br from-pink-50 to-white rounded-2xl p-8 text-center mb-6 hover:border-pink-400 transition-colors duration-300">
@@ -723,7 +706,7 @@ export default function FingerprintPage() {
                 <div className="relative inline-block">
                   <img
                     src={previewUrl}
-                    alt="업로드된 지문"
+                    alt={t("uploadedFingerprint")}
                     className="max-w-full max-h-64 rounded-xl shadow-lg border-2 border-pink-200"
                   />
                 </div>
@@ -738,7 +721,7 @@ export default function FingerprintPage() {
                     }}
                     className="text-sm text-pink-600 hover:text-pink-800 font-semibold underline"
                   >
-                    다른 사진 선택
+                    {t("selectOtherPhoto")}
                   </button>
                 </div>
               </div>
@@ -751,7 +734,7 @@ export default function FingerprintPage() {
                     className="cursor-pointer inline-flex items-center gap-3 bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-300 font-bold text-lg hover:scale-105"
                   >
                     <Upload className="w-6 h-6" />
-                    엄지 지문 사진 업로드
+                    {t("uploadThumbprint")}
                   </label>
                   <input
                     id="fingerprint-upload"
@@ -762,7 +745,7 @@ export default function FingerprintPage() {
                   />
                 </div>
                 <p className="text-sm text-gray-600 font-medium">
-                  JPG, PNG 형식의 이미지를 업로드해주세요
+                  {t("uploadFormat")}
                 </p>
               </div>
             )}
@@ -772,7 +755,7 @@ export default function FingerprintPage() {
           {usageLimit !== null && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <div className="flex items-center gap-2 text-sm text-blue-800">
-                <span className="font-semibold">남은 분석 횟수:</span>
+                <span className="font-semibold">{t("remainingAnalysis")}</span>
                 <span className="font-bold text-blue-600">
                   {usageLimit.fingerprint_analysis_remaining} /{" "}
                   {usageLimit.fingerprint_analysis_limit}
@@ -790,24 +773,18 @@ export default function FingerprintPage() {
                   <div className="flex-1">
                     <div className="text-sm text-red-800 mb-3">
                       <p className="font-semibold mb-1">
-                        분석회수를 초과했습니다.
+                        {t("usageExceeded")}
                       </p>
-                      <p>더 자세한 대화는 선생님과의 예약이 필요합니다.</p>
+                      <p>{t("usageExceededDetail")}</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <Link
-                        href="/consultation"
-                        className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        대화 예약하기
-                      </Link>
                       <a
                         href={KAKAO_CHANNEL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                       >
-                        카카오톡 문의
+                        {t("kakaoInquiry")}
                       </a>
                     </div>
                   </div>
@@ -829,12 +806,12 @@ export default function FingerprintPage() {
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-6 h-6 animate-spin" />
-                    분석 중...
+                    {t("analyzing")}
                   </>
                 ) : (
                   <>
                     <Brain className="w-6 h-6" />
-                    AI 주성향 분석 시작
+                    {t("startAnalysis")}
                   </>
                 )}
               </button>
@@ -854,27 +831,21 @@ export default function FingerprintPage() {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 bg-white bg-opacity-20 px-4 py-2 rounded-full mb-4">
               <Brain className="w-5 h-5 animate-pulse" />
-              <span className="text-sm font-semibold">AI 기반 맞춤 분석</span>
+              <span className="text-sm font-semibold">{t("ctaBadge")}</span>
             </div>
             <h2 className="text-2xl md:text-4xl font-bold mb-4 drop-shadow-lg">
-              지문 분석으로 우리 아이의 강점을 발견하세요
+              {t("ctaTitle")}
             </h2>
             <p className="text-lg md:text-xl mb-10 opacity-95">
-              하워드 가드너 다중지능 이론 기반 지문 분석
+              {t("ctaSubtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-5 justify-center">
               <button
                 onClick={() => setIsChatOpen(true)}
                 className="bg-white text-pink-600 hover:bg-gray-50 hover:shadow-2xl px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-xl hover:scale-105"
               >
-                지문 분석 문의하기
+                {t("ctaButton")}
               </button>
-              <Link
-                href="/consultation"
-                className="bg-transparent border-3 border-white text-white hover:bg-white hover:text-fuchsia-600 px-10 py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 shadow-lg"
-              >
-                대화·수업 안내로 이동
-              </Link>
             </div>
           </div>
         </div>
@@ -888,7 +859,7 @@ export default function FingerprintPage() {
             <div className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between shadow-lg">
               <div className="flex items-center gap-2">
                 <Brain className="w-5 h-5 animate-pulse" />
-                <h3 className="font-semibold text-lg">엄지 주성향 분석 결과</h3>
+                <h3 className="font-semibold text-lg">{t("analysisResultTitle")}</h3>
               </div>
               <button
                 onClick={closeAnalysisModal}
@@ -904,10 +875,10 @@ export default function FingerprintPage() {
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-12 h-12 text-pink-600 animate-spin mb-4" />
                   <p className="text-gray-700 text-lg font-semibold">
-                    지문 패턴을 분석하고 있습니다...
+                    {t("analyzingPattern")}
                   </p>
                   <p className="text-gray-500 text-sm mt-2">
-                    잠시만 기다려주세요
+                    {t("pleaseWait")}
                   </p>
                 </div>
               ) : analysisResult ? (
@@ -917,14 +888,14 @@ export default function FingerprintPage() {
                     <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl shadow-lg p-6 border-2 border-pink-200">
                       <h4 className="text-xl font-bold text-gray-800 mb-4 text-center flex items-center justify-center gap-2">
                         <ImageIcon className="w-5 h-5 text-pink-600" />
-                        분석된 엄지 지문
+                        {t("analyzedThumbprint")}
                       </h4>
                       <div className="flex justify-center bg-white p-4 rounded-lg shadow-inner">
                         <div className="relative inline-block">
                           <div className="relative">
                             <img
                               src={previewUrl}
-                              alt="분석된 지문"
+                              alt={t("analyzedThumbprint")}
                               className="max-w-full max-h-96 rounded-lg shadow-xl border-4 border-pink-200 object-contain"
                               style={{
                                 filter:
@@ -953,45 +924,45 @@ export default function FingerprintPage() {
                               {/* 나선형 패턴 표시 - 크기 증가 */}
                               {(analysisResult.pattern_type === "나선형" ||
                                 analysisResult.pattern_type === "정기문") && (
-                                <>
-                                  <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="18"
-                                    fill="none"
-                                    stroke="rgba(255, 0, 0, 0.6)"
-                                    strokeWidth="1.2"
-                                    strokeDasharray="3,3"
-                                  />
-                                  <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="28"
-                                    fill="none"
-                                    stroke="rgba(255, 0, 0, 0.5)"
-                                    strokeWidth="1.2"
-                                    strokeDasharray="3,3"
-                                  />
-                                  <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="38"
-                                    fill="none"
-                                    stroke="rgba(255, 0, 0, 0.4)"
-                                    strokeWidth="1.2"
-                                    strokeDasharray="3,3"
-                                  />
-                                  <circle
-                                    cx="50"
-                                    cy="50"
-                                    r="45"
-                                    fill="none"
-                                    stroke="rgba(255, 0, 0, 0.3)"
-                                    strokeWidth="1"
-                                    strokeDasharray="3,3"
-                                  />
-                                </>
-                              )}
+                                  <>
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="18"
+                                      fill="none"
+                                      stroke="rgba(255, 0, 0, 0.6)"
+                                      strokeWidth="1.2"
+                                      strokeDasharray="3,3"
+                                    />
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="28"
+                                      fill="none"
+                                      stroke="rgba(255, 0, 0, 0.5)"
+                                      strokeWidth="1.2"
+                                      strokeDasharray="3,3"
+                                    />
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="38"
+                                      fill="none"
+                                      stroke="rgba(255, 0, 0, 0.4)"
+                                      strokeWidth="1.2"
+                                      strokeDasharray="3,3"
+                                    />
+                                    <circle
+                                      cx="50"
+                                      cy="50"
+                                      r="45"
+                                      fill="none"
+                                      stroke="rgba(255, 0, 0, 0.3)"
+                                      strokeWidth="1"
+                                      strokeDasharray="3,3"
+                                    />
+                                  </>
+                                )}
                               {/* 두형문 패턴 표시 - 크기 증가 */}
                               {analysisResult.pattern_type === "두형문" && (
                                 <>
@@ -1188,7 +1159,7 @@ export default function FingerprintPage() {
                         </div>
                       </div>
                       <p className="text-center text-sm text-gray-600 mt-4">
-                        위 지문 패턴을 분석한 결과입니다
+                        {t("analysisResultNote")}
                       </p>
                     </div>
                   )}
@@ -1196,28 +1167,27 @@ export default function FingerprintPage() {
                   {/* 패턴 유형 */}
                   <div className="bg-gradient-to-br from-white to-pink-50 rounded-xl shadow-md p-6 border-l-4 border-pink-500 hover:shadow-lg transition-shadow">
                     <h4 className="text-xl font-bold text-gray-800 mb-2">
-                      지문 패턴 유형
+                      {t("patternType")}
                     </h4>
                     <p className="text-2xl font-semibold bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent mb-2">
                       {analysisResult.pattern_type}
                     </p>
                     <p className="text-gray-600 text-sm">
-                      신뢰도: {analysisResult.confidence}
+                      {t("confidence")} {analysisResult.confidence}
                     </p>
                   </div>
 
                   {/* 성격 특성 */}
                   <div className="bg-gradient-to-br from-white to-pink-50 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
                     <h4 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent mb-4">
-                      엄지 주성격 분석
+                      {t("thumbPersonality")}
                     </h4>
                     <p className="text-gray-700 mb-4 leading-relaxed">
-                      엄지손가락의 지문 패턴은 개인의 주된 성격 특성을 나타내는
-                      중요한 지표입니다.
+                      {t("thumbPersonalityDesc")}
                     </p>
                     <div className="mb-4">
                       <h5 className="font-semibold text-gray-800 mb-2">
-                        {analysisResult.pattern_type} 패턴의 특성:
+                        {analysisResult.pattern_type} {t("patternTraits")}
                       </h5>
                       <div className="flex flex-wrap gap-2">
                         {analysisResult.personality_traits?.map(
@@ -1234,7 +1204,7 @@ export default function FingerprintPage() {
                     </div>
                     <div className="mt-4">
                       <h5 className="font-semibold text-gray-800 mb-2">
-                        학습 스타일:
+                        {t("learningStyle")}
                       </h5>
                       <p className="text-gray-700 leading-relaxed">
                         {analysisResult.learning_style}
@@ -1246,7 +1216,7 @@ export default function FingerprintPage() {
                   {analysisResult.analysis_summary && (
                     <div className="bg-gradient-to-r from-pink-50 to-fuchsia-50 rounded-xl p-6 border-l-4 border-pink-400 shadow-md">
                       <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                        분석 요약
+                        {t("analysisSummary")}
                       </h4>
                       <p className="text-gray-700 leading-relaxed">
                         {analysisResult.analysis_summary}
@@ -1258,7 +1228,7 @@ export default function FingerprintPage() {
                   {analysisResult.pattern_description && (
                     <div className="bg-gradient-to-br from-pink-50 to-white rounded-xl p-6 shadow-md">
                       <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                        패턴 상세 설명
+                        {t("patternDescription")}
                       </h4>
                       <p className="text-gray-700 leading-relaxed text-sm">
                         {analysisResult.pattern_description}
@@ -1266,20 +1236,12 @@ export default function FingerprintPage() {
                     </div>
                   )}
 
-                  {/* 심층상담 버튼 */}
                   <div className="flex gap-4 pt-4">
-                    <Link
-                      href="/consultation"
-                      onClick={closeAnalysisModal}
-                      className="flex-1 bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl transition-all duration-300 text-center hover:scale-105"
-                    >
-                      심층상담 신청하기
-                    </Link>
                     <button
                       onClick={closeAnalysisModal}
-                      className="px-6 py-3 border-2 border-pink-300 text-gray-700 rounded-xl font-semibold hover:bg-pink-50 transition-colors"
+                      className="flex-1 px-6 py-3 border-2 border-pink-300 text-gray-700 rounded-xl font-semibold hover:bg-pink-50 transition-colors"
                     >
-                      닫기
+                      {t("close")}
                     </button>
                   </div>
                 </div>
@@ -1297,7 +1259,7 @@ export default function FingerprintPage() {
             <div className="bg-gradient-to-r from-pink-500 via-fuchsia-600 to-purple-600 text-white p-4 rounded-t-lg flex items-center justify-between shadow-lg">
               <div className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5" />
-                <h3 className="font-semibold text-lg">지문상담 문의</h3>
+                <h3 className="font-semibold text-lg">{t("chatTitle")}</h3>
               </div>
               <button
                 onClick={() => setIsChatOpen(false)}
@@ -1312,26 +1274,23 @@ export default function FingerprintPage() {
               {messages.map((message, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-xl p-3 ${
-                      message.role === "user"
-                        ? "bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white shadow-md"
-                        : "bg-white text-gray-800 shadow-sm"
-                    }`}
+                    className={`max-w-[80%] rounded-xl p-3 ${message.role === "user"
+                      ? "bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white shadow-md"
+                      : "bg-white text-gray-800 shadow-sm"
+                      }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">
                       {message.content}
                     </p>
                     <p
-                      className={`text-xs mt-1 ${
-                        message.role === "user"
-                          ? "text-pink-100"
-                          : "text-gray-500"
-                      }`}
+                      className={`text-xs mt-1 ${message.role === "user"
+                        ? "text-pink-100"
+                        : "text-gray-500"
+                        }`}
                     >
                       {message.timestamp.toLocaleTimeString("ko-KR", {
                         hour: "2-digit",
@@ -1351,7 +1310,7 @@ export default function FingerprintPage() {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="메시지를 입력하세요..."
+                  placeholder={t("chatPlaceholder")}
                   className="flex-1 px-4 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-black"
                 />
                 <button
@@ -1362,17 +1321,6 @@ export default function FingerprintPage() {
                   <Send className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                더 자세한 상담은{" "}
-                <Link
-                  href="/consultation"
-                  className="text-pink-600 hover:underline font-semibold"
-                  onClick={() => setIsChatOpen(false)}
-                >
-                  상담 페이지
-                </Link>
-                에서 확인하세요.
-              </p>
             </div>
           </div>
         </div>
@@ -1389,8 +1337,8 @@ export default function FingerprintPage() {
                   <AlertCircle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl">오류 발생</h3>
-                  <p className="text-sm text-red-100 mt-1">확인해주세요</p>
+                  <h3 className="font-bold text-xl">{t("errorTitle")}</h3>
+                  <p className="text-sm text-red-100 mt-1">{t("errorCheck")}</p>
                 </div>
               </div>
             </div>
@@ -1410,7 +1358,7 @@ export default function FingerprintPage() {
                 onClick={closeErrorModal}
                 className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                확인
+                {t("errorConfirm")}
               </button>
             </div>
           </div>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { verifyPayment } from "@/lib/api";
+import { trackConversion } from "@/lib/google-ads";
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
@@ -12,6 +13,7 @@ export default function PaymentSuccessPage() {
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const conversionSentRef = useRef(false);
 
   const sessionId = searchParams.get("session_id");
   const paymentId = searchParams.get("payment_id");
@@ -34,6 +36,10 @@ export default function PaymentSuccessPage() {
       if (checkoutId) {
         setVerified(true);
         setVerifying(false);
+        if (!conversionSentRef.current) {
+          conversionSentRef.current = true;
+          trackConversion();
+        }
         const locale = getLocale();
         setTimeout(() => {
           router.push(`/${locale}/counseling?payment_success=true&checkout_id=${checkoutId}`);
@@ -54,6 +60,10 @@ export default function PaymentSuccessPage() {
 
         if (result.success) {
           setVerified(true);
+          if (!conversionSentRef.current) {
+            conversionSentRef.current = true;
+            trackConversion();
+          }
         } else {
           setError(result.message || "결제 확인에 실패했습니다.");
         }

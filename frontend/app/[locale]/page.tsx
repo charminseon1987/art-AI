@@ -15,8 +15,8 @@ import {
 import { getReports, getSampleGalleryImages } from "@/lib/api";
 
 // 동적 import로 code splitting 적용
-const PinterestGallery = dynamic(
-  () => import("@/components/PinterestGallery"),
+const SimpleSwiper = dynamic(
+  () => import("@/components/SimpleSwiper"),
   {
     loading: () => (
       <div className="w-full h-96 flex items-center justify-center">
@@ -609,7 +609,7 @@ export default function Home() {
                 </button>
               </div>
             ) : galleryItems.length > 0 ? (
-              <PinterestGallery items={galleryItems} columns={3} gap={12} />
+              <SimpleSwiper items={galleryItems} autoPlay={true} autoPlayInterval={3000} />
             ) : (
               <div className="text-center py-20">
                 <Palette className="w-16 h-16 text-slate-400 mx-auto mb-4" />
@@ -762,34 +762,7 @@ export default function Home() {
         </div>
       </footer>
 
-      <style jsx>{`
-        @keyframes blob {
-          0% {
-            transform: translate(0px, 0px) scale(1);
-          }
-          33% {
-            transform: translate(30px, -50px) scale(1.1);
-          }
-          66% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          100% {
-            transform: translate(0px, 0px) scale(1);
-          }
-        }
 
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   );
 }

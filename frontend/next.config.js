@@ -2,6 +2,11 @@ const createNextIntlPlugin = require("next-intl/plugin");
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
+// Cloudflare Workers 로컬 개발 바인딩 에뮬레이션
+import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) =>
+  initOpenNextCloudflareForDev(),
+);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -41,8 +46,8 @@ const nextConfig = {
       // 다른 프로덕션 도메인 추가 시 여기에 추가
     ],
   },
-  // Cloudflare Pages 배포를 위한 설정
-  // @cloudflare/next-on-pages를 사용하므로 output 설정 제거
+  // Cloudflare Workers 배포를 위한 설정
+  // @opennextjs/cloudflare를 사용
 };
 
 module.exports = withNextIntl(nextConfig);

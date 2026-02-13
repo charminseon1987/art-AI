@@ -1,7 +1,8 @@
-"use client";
+
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
-import { Send, MessageSquare } from "lucide-react";
+import { Send, MessageSquare, SkipForward } from "lucide-react";
 
 interface ChatInterfaceProps {
   reportData: any;
@@ -15,6 +16,7 @@ export default function ChatInterface({
   reportData,
   onComplete,
 }: ChatInterfaceProps) {
+  const t = useTranslations("analysis.chat");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<
     Array<{ question: string; answer: string }>
@@ -99,27 +101,27 @@ export default function ChatInterface({
   const fixedQuestions = [
     {
       id: "Q1",
-      text: "이 그림을 그릴 때 어떤 기분이었나요?\n말로 하기 어렵다면 한 단어만 적어도 괜찮아요 🙂",
+      text: t("questions.icebreaking"),
       type: "icebreaking",
     },
     {
       id: "Q2",
-      text: "이 그림에서 가장 마음에 드는 부분은 어디인가요?\n색, 모양, 아무거나 괜찮아요.",
+      text: t("questions.exploration"),
       type: "exploration",
     },
     {
       id: "Q3",
-      text: "그 부분을 선택했을 때 어떤 느낌이 들었나요?",
+      text: t("questions.feeling"),
       type: "feeling",
     },
     {
       id: "Q4",
-      text: "이 그림이 말을 할 수 있다면,\n지금 뭐라고 말할 것 같아요?",
+      text: t("questions.story"),
       type: "story",
     },
     {
       id: "Q5",
-      text: "이 그림을 다시 그린다면\n조금 바꾸고 싶은 곳이 있을까요?\n없어도 괜찮아요 🙂",
+      text: t("questions.optional"),
       type: "optional",
     },
   ];
@@ -164,6 +166,32 @@ export default function ChatInterface({
       handleComplete(newResponses);
     } else {
       // 다음 질문으로 이동 (상태 업데이트를 명확하게)
+      setCurrentQuestionIndex(nextIndex);
+    }
+  };
+
+  const handleSkip = () => {
+    if (!currentQuestion) return;
+
+    // 건너뛰기 시에도 응답 목록에 추가 (백엔드 처리 위해)
+    const newResponses = [
+      ...responses,
+      { question: currentQuestion.text, answer: "(건너뜀)" },
+    ];
+    setResponses(newResponses);
+
+    // 답변 입력 필드 초기화
+    setCurrentAnswer("");
+
+    // 다음 질문 결정
+    const nextIndex = currentQuestionIndex + 1;
+
+    // 최대 질문 수 확인
+    if (nextIndex >= maxQuestions) {
+      // 모든 질문 완료
+      handleComplete(newResponses);
+    } else {
+      // 다음 질문으로 이동
       setCurrentQuestionIndex(nextIndex);
     }
   };
@@ -215,11 +243,9 @@ export default function ChatInterface({
       {isCompleting && (
         <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
           <p className="text-gray-800 whitespace-pre-line">
-            이야기해줘서 고마워요.
+            {t("complete.title")}
             <br />
-            이제 그림과 이야기를 정리해서
-            <br />
-            대화에 도움이 되는 참고 자료를 만들어볼게요.
+            {t("complete.subtitle")}
           </p>
         </div>
       )}
@@ -227,12 +253,12 @@ export default function ChatInterface({
       {/* 질문이 모두 완료된 경우 */}
       {!currentQuestion && !isCompleting && responses.length > 0 && (
         <div className="text-center py-4">
-          <p className="text-gray-600">모든 질문에 답변해주셔서 감사합니다.</p>
+          <p className="text-gray-600">{t("complete.thankYou")}</p>
           <button
             onClick={() => handleComplete(responses)}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
           >
-            리포트 생성하기
+            {t("complete.button")}
           </button>
         </div>
       )}
@@ -241,33 +267,33 @@ export default function ChatInterface({
       {currentQuestionIndex === 0 && responses.length === 0 && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mb-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">
-            기본 정보 입력
+            {t("intro.title")}
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                나이 (선택사항)
+                {t("intro.age")}
               </label>
               <input
                 type="text"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
-                placeholder="예: 7세, 초등 1학년"
+                placeholder={t("intro.agePlaceholder")}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white text-sm"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                성별 (선택사항)
+                {t("intro.gender")}
               </label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800 bg-white text-sm"
               >
-                <option value="">선택 안함</option>
-                <option value="남">남</option>
-                <option value="여">여</option>
+                <option value="">{t("intro.genderOptions.none")}</option>
+                <option value="남">{t("intro.genderOptions.male")}</option>
+                <option value="여">{t("intro.genderOptions.female")}</option>
               </select>
             </div>
           </div>
@@ -281,11 +307,7 @@ export default function ChatInterface({
           {currentQuestionIndex === 0 && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-lg text-sm text-gray-700">
               <p className="whitespace-pre-line">
-                아이의 말을 그대로 적어주셔도 괜찮고,
-                <br />
-                부모님이 느낀 점을 적어주셔도 괜찮습니다.
-                <br />
-                정답은 없습니다 🙂
+                {t("intro.guide")}
               </p>
             </div>
           )}
@@ -320,7 +342,7 @@ export default function ChatInterface({
                 // 포커스가 벗어날 때도 깨끗하게 정리
                 setCurrentAnswer((prev) => prev.trim());
               }}
-              placeholder="답변을 입력하세요..."
+              placeholder={t("placeholder")}
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-800 bg-white"
               rows={3}
               autoFocus={false}
@@ -334,9 +356,20 @@ export default function ChatInterface({
             <button
               onClick={handleSubmit}
               disabled={!currentAnswer.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 self-stretch"
             >
               <Send className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* 건너뛰기 버튼 */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleSkip}
+              className="border-2 border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-600 hover:text-orange-700 px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 font-semibold"
+            >
+              <SkipForward className="w-5 h-5" />
+              {t("skip")}
             </button>
           </div>
         </div>
@@ -345,7 +378,7 @@ export default function ChatInterface({
       {/* 질문 진행 상황 표시 */}
       {!isCompleting && questionsToUse.length > 0 && currentQuestion && (
         <div className="text-center text-sm text-gray-500">
-          질문 {currentQuestionIndex + 1} / {maxQuestions}
+          {t("questionCount", { current: currentQuestionIndex + 1, max: maxQuestions })}
         </div>
       )}
     </div>

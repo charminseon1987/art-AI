@@ -1,13 +1,14 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowRight, CheckCircle, MessageCircle, MailOpen, PhoneCall, Sparkles, Users, Palette, Calendar, Heart } from "lucide-react";
 
 export default function ConsultationPage() {
+  const t = useTranslations("consultation");
+
   const steps = [
     {
       num: "1",
-      title: "그림 상담 (AI)",
-      description:
-        "아이의 그림을 AI로 분석하고 상담 질문을 통해 이야기를 나눕니다.",
+      title: t("step1Title"),
+      description: t("step1Description"),
       icon: Sparkles,
       color: "from-purple-500 to-fuchsia-600",
       bgColor: "from-purple-50 to-fuchsia-50",
@@ -15,9 +16,8 @@ export default function ConsultationPage() {
     },
     {
       num: "2",
-      title: "보호자 상담 (20분)",
-      description:
-        "생성된 리포트를 바탕으로 보호자와 간단한 상담을 진행합니다.",
+      title: t("step2Title"),
+      description: t("step2Description"),
       icon: Users,
       color: "from-blue-500 to-cyan-600",
       bgColor: "from-blue-50 to-cyan-50",
@@ -25,8 +25,8 @@ export default function ConsultationPage() {
     },
     {
       num: "3",
-      title: "아이 맞춤 미술 수업 제안",
-      description: "아이의 특성에 맞는 수업 방식을 제안합니다.",
+      title: t("step3Title"),
+      description: t("step3Description"),
       icon: Palette,
       color: "from-pink-500 to-rose-600",
       bgColor: "from-pink-50 to-rose-50",
@@ -34,8 +34,8 @@ export default function ConsultationPage() {
     },
     {
       num: "4",
-      title: "정기 수업 진행",
-      description: "아이의 속도에 맞춰 자연스럽게 수업을 진행합니다.",
+      title: t("step4Title"),
+      description: t("step4Description"),
       icon: Calendar,
       color: "from-green-500 to-emerald-600",
       bgColor: "from-green-50 to-emerald-50",
@@ -48,7 +48,7 @@ export default function ConsultationPage() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
-            상담·수업 안내
+            {t("title")}
           </h1>
         </div>
 
@@ -56,31 +56,31 @@ export default function ConsultationPage() {
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-8 rounded-2xl shadow-lg border border-amber-100 text-center hover:shadow-xl transition-all duration-300">
             <MailOpen className="w-16 h-16 text-amber-500 mx-auto mb-4 animate-pulse" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">이메일 문의</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">{t("emailInquiry")}</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              문의 사항은 이메일로 보내주세요.
+              {t("emailDescription")}
             </p>
             <a
               href="mailto:lovetree914@naver.com?subject=미술 수업 문의&body=안녕하세요. 문의드립니다."
               className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-gray-800 px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
             >
               <MailOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span>이메일 보내기</span>
+              <span>{t("sendEmail")}</span>
             </a>
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl shadow-lg border border-green-100 text-center hover:shadow-xl transition-all duration-300">
             <PhoneCall className="w-16 h-16 text-green-500 mx-auto mb-4 animate-pulse" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">전화 상담</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">{t("phoneConsultation")}</h3>
             <p className="text-gray-600 mb-4 text-sm">
-              전화 상담은 오전 10시부터 오후 5시까지 가능합니다.
+              {t("phoneDescription")}
             </p>
             <a
               href="tel:010-4159-1102"
               className="group inline-flex items-center justify-center gap-3 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-4 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 transform"
             >
               <PhoneCall className="w-5 h-5 group-hover:rotate-12 group-hover:scale-110 transition-transform" />
-              <span>전화 걸기</span>
+              <span>{t("makeCall")}</span>
             </a>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function ConsultationPage() {
         {/* 진행 흐름 */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center">
-            진행 흐름
+            {t("processFlow")}
           </h2>
           <div className="space-y-6">
             {steps.map((step, idx) => {
@@ -137,11 +137,11 @@ export default function ConsultationPage() {
               <Heart className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">상담에 대해</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">{t("aboutConsultation")}</h2>
               <p className="text-lg text-gray-800 leading-relaxed">
-                <strong className="text-pink-600">아이를 '문제'로 보지 않습니다.</strong>
+                <strong className="text-pink-600">{t("notAProblem")}</strong>
                 <br />
-                아이의 속도를 먼저 이해합니다.
+                {t("understandPace")}
               </p>
             </div>
           </div>

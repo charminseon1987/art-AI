@@ -78,6 +78,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
-    "/((?!api|_next|_vercel|.*\\..*).*)",
+    "/((?!api|_next|.*\\..*).*)",
   ],
 };

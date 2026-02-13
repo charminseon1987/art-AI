@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.16.4",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.38",
     "@stripe/react-stripe-js": "^2.4.0",
@@ -31,6 +34,7 @@
     "@types/react": "^18",
     "eslint": "^9",
     "eslint-config-next": "^16.0.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.64.0"
   }
 }
