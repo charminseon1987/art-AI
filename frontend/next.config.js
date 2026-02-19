@@ -3,9 +3,10 @@ const createNextIntlPlugin = require("next-intl/plugin");
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 // Cloudflare Workers 로컬 개발 바인딩 에뮬레이션
-import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) =>
-  initOpenNextCloudflareForDev(),
-);
+// Cloudflare Workers 로컬 개발 바인딩 에뮬레이션
+// import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) =>
+//   initOpenNextCloudflareForDev(),
+// );
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
