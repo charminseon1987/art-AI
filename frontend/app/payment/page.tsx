@@ -1,12 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import PaymentCheckout from "@/components/PaymentCheckout";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function PaymentPage() {
+  return (
+    <Suspense fallback={<PaymentLoading />}>
+      <PaymentContent />
+    </Suspense>
+  );
+}
+
+function PaymentLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600">로딩 중...</p>
+      </div>
+    </div>
+  );
+}
+
+function PaymentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -28,14 +47,7 @@ export default function PaymentPage() {
   }, [amount, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    );
+    return <PaymentLoading />;
   }
 
   const handleSuccess = (paymentId: string) => {
