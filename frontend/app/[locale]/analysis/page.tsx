@@ -1222,7 +1222,7 @@ export default function AnalysisPage() {
         )}
 
         {/* STEP 4 (기존): 상담 연결 CTA - 이제 사용하지 않음 */}
-        {false && step === 4 && (
+        {step === 4 && (
           <div className="bg-white p-8 rounded-lg shadow-lg">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-lg">

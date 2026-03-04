@@ -3,6 +3,7 @@ import os
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 from models.report import ReportData
+from models.contact import ContactInquiry
 from utils.supabase_auth import supabase
 
 load_dotenv()
@@ -225,6 +226,144 @@ class EmailService:
             import traceback
             error_trace = traceback.format_exc()
             print(f"[EmailService] 이메일 전송 중 오류 발생: {error_trace}")
+            return {
+                "success": False,
+                "message": f"이메일 전송 중 오류가 발생했습니다: {str(e)}"
+            }
+
+    def send_contact_notification(
+        self,
+        contact_data: ContactInquiry
+    ) -> Dict[str, Any]:
+        """
+        새로운 문의 접수 시 관리자에게 이메일 알림 전송
+        
+        Args:
+            contact_data: 문의 데이터
+            
+        Returns:
+            전송 결과 딕셔너리 (success, message)
+        """
+        if not self.resend_api_key:
+            return {
+                "success": False,
+                "message": "RESEND_API_KEY가 설정되지 않았습니다."
+            }
+        
+        try:
+            import requests
+            
+            # 수신자 이메일 (관리자)
+            admin_email = os.getenv("ADMIN_EMAIL", "lovetree914@naver.com")
+            
+            # 이메일 본문 작성 (HTML 형식)
+            email_body_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .container {{
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 10px;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        .content {{
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }}
+        .info {{
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="color: #e74c3c;">새로운 문의가 접수되었습니다</h1>
+        </div>
+        <div class="content">
+            <p>안녕하세요 관리자님,</p>
+            <p>사이트를 통해 새로운 간단 문의가 접수되었습니다. 내용을 확인해 주세요.</p>
+            
+            <div class="info">
+                <p><strong>이름:</strong> {contact_data.name}</p>
+                <p><strong>연락처:</strong> {contact_data.phone}</p>
+                <p><strong>아이 연령:</strong> {contact_data.child_age}</p>
+                <p><strong>접수일시:</strong> {contact_data.created_at.strftime('%Y년 %m월 %d일 %H:%M')}</p>
+            </div>
+            
+            <p><strong>문의 내용:</strong></p>
+            <div style="background-color: #fff9c4; padding: 15px; border-left: 5px solid #fbc02d; font-style: italic;">
+                {contact_data.message.replace('\n', '<br>')}
+            </div>
+        </div>
+        <div class="footer">
+            <p>본 메일은 시스템에 의해 자동으로 발송되었습니다.</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+            
+            # Resend API 호출
+            url = "https://api.resend.com/emails"
+            headers = {
+                "Authorization": f"Bearer {self.resend_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "from": self.from_email,
+                "to": [admin_email],
+                "subject": f"[문의접수] {contact_data.name}님의 새로운 문의",
+                "html": email_body_html
+            }
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                print(f"[EmailService] 문의 알림 이메일 전송 성공: {admin_email}, id={result.get('id')}")
+                return {
+                    "success": True,
+                    "message": "문의 알림 이메일이 성공적으로 전송되었습니다.",
+                    "email_id": result.get("id")
+                }
+            else:
+                error_msg = response.text
+                print(f"[EmailService] 문의 알림 이메일 전송 실패: {response.status_code} - {error_msg}")
+                return {
+                    "success": False,
+                    "message": f"이메일 전송 실패: {response.status_code} - {error_msg}"
+                }
+                
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"[EmailService] 문의 알림 이메일 전송 중 오류 발생: {error_trace}")
             return {
                 "success": False,
                 "message": f"이메일 전송 중 오류가 발생했습니다: {str(e)}"

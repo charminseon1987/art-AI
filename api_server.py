@@ -1280,6 +1280,13 @@ async def create_contact(
         
         contact_service.save_contact(contact_data)
         
+        # 이메일 알림 보충 (비동기적으로 처리하거나 에러 발생 시 로그만 출력)
+        if email_service:
+            try:
+                email_service.send_contact_notification(contact_data)
+            except Exception as email_err:
+                print(f"[create_contact] 이메일 알림 전송 실패: {email_err}")
+        
         return JSONResponse(
             status_code=200,
             content={
