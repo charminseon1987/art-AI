@@ -67,6 +67,13 @@ function PaymentSuccessContent() {
 
         if (result.success) {
           setVerified(true);
+          // 분석 페이지로 리다이렉트 (결제 완료 상태 포함)
+          setTimeout(() => {
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+            const pathParts = currentPath.split('/').filter(Boolean);
+            const locale = pathParts[0] === 'payment' ? 'ko' : (pathParts[0] || 'ko');
+            router.push(`/${locale}/analysis?payment_success=true&session_id=${sessionId}`);
+          }, 1500);
         } else {
           setError(result.message || "결제 확인에 실패했습니다.");
         }
@@ -79,7 +86,7 @@ function PaymentSuccessContent() {
     };
 
     verify();
-  }, [sessionId, checkoutId]);
+  }, [sessionId, checkoutId, router]);
 
   if (verifying) {
     return (

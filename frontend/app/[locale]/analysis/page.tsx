@@ -165,8 +165,9 @@ export default function AnalysisPage() {
   useEffect(() => {
     const paymentSuccess = searchParams.get("payment_success");
     const checkoutId = searchParams.get("checkout_id");
+    const sessionId = searchParams.get("session_id");
 
-    if (paymentSuccess === "true" && checkoutId && step === 1) {
+    if (paymentSuccess === "true" && (checkoutId || sessionId) && step === 1) {
       const restoreAndAnalyze = async () => {
         try {
           console.log("[AnalysisPage] 결제 완료 확인, 파일 복원 시작");

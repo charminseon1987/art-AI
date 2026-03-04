@@ -58,7 +58,7 @@ class StripeService:
             # 기본 URL 설정
             frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
             if not success_url:
-                success_url = f"{frontend_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
+                success_url = f"{frontend_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&payment_success=true"
             if not cancel_url:
                 cancel_url = f"{frontend_url}/payment/cancel"
 
