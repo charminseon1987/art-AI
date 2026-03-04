@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { Checkout } from "@polar-sh/nextjs";
 
 export const GET = Checkout({

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from "next/link";
 import { ArrowRight, CheckCircle, MessageCircle, MailOpen, PhoneCall, Sparkles, Users, Palette, Calendar, Heart } from "lucide-react";
 

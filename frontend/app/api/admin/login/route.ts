@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from "next/server";
 
 // 관리자 비밀번호 (환경 변수에서 가져오거나 기본값 사용)
