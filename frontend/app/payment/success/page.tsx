@@ -40,17 +40,20 @@ function PaymentSuccessContent() {
     const verify = async () => {
       // Polar.sh checkout_id가 있는 경우 바로 성공 처리 및 분석 페이지로 리다이렉트
       if (checkoutId) {
+        console.log("[PaymentSuccess] checkout_id 확인:", checkoutId);
         setVerified(true);
         setVerifying(false);
+        
+        // sessionStorage 데이터 확인
+        const pendingData = sessionStorage.getItem("pendingAnalysis");
+        console.log("[PaymentSuccess] sessionStorage 데이터 존재:", !!pendingData);
+        
         // 분석 페이지로 리다이렉트 (결제 완료 상태 포함)
-        // locale을 고려하여 경로 설정 (기본값: ko)
         setTimeout(() => {
-          // 현재 경로에서 locale 추출 또는 기본값 사용
-          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-          const pathParts = currentPath.split('/').filter(Boolean);
-          const locale = pathParts[0] === 'payment' ? 'ko' : (pathParts[0] || 'ko');
-          router.push(`/${locale}/analysis?payment_success=true&checkout_id=${checkoutId}`);
-        }, 1500); // 1.5초 후 리다이렉트 (사용자가 성공 메시지를 볼 수 있도록)
+          const redirectUrl = `/ko/analysis?payment_success=true&checkout_id=${checkoutId}`;
+          console.log("[PaymentSuccess] 리다이렉트:", redirectUrl);
+          router.push(redirectUrl);
+        }, 1500);
         return;
       }
 
@@ -79,7 +82,7 @@ function PaymentSuccessContent() {
     };
 
     verify();
-  }, [sessionId, checkoutId]);
+  }, [sessionId, checkoutId, router]);
 
   if (verifying) {
     return (
