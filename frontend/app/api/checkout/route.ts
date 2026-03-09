@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// Edge runtime은 Polar SDK와 호환되지 않아 제거
+// export const runtime = "edge";
 import { NextRequest } from "next/server";
 import { Checkout } from "@polar-sh/nextjs";
 

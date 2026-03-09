@@ -1,13 +1,14 @@
 """FastAPI 서버 - Next.js 프론트엔드와 연동"""
 from fastapi import FastAPI, File, UploadFile, Form, Header, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from typing import Optional, List, Dict
 from datetime import datetime
 import os
 import sys
 import logging
 import random
+import requests
 from io import BytesIO
 
 # 프로젝트 루트를 Python 경로에 추가
@@ -2684,6 +2685,117 @@ async def get_sample_gallery_images():
                 "success": False,
                 "error": f"샘플 이미지를 가져올 수 없습니다: {str(e)}",
                 "images": []
+            }
+        )
+
+
+@app.get("/api/polar/checkout")
+async def create_polar_checkout(
+    request: Request,
+    products: str,
+    metadata: Optional[str] = None
+):
+    """Polar Checkout URL 생성 및 리다이렉트"""
+    try:
+        # 환경 변수에서 Polar 설정 가져오기
+        polar_access_token = os.getenv("POLAR_ACCESS_TOKEN")
+        if not polar_access_token:
+            logger.error("POLAR_ACCESS_TOKEN이 설정되지 않았습니다.")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "결제 설정 오류",
+                    "message": "POLAR_ACCESS_TOKEN 환경 변수를 설정해주세요."
+                }
+            )
+
+        # Success URL 생성
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        success_url = f"{frontend_url}/payment/success?checkout_id={{CHECKOUT_ID}}"
+
+        # Polar 서버 설정 (production 또는 sandbox)
+        polar_server = os.getenv("POLAR_SERVER", os.getenv("POLAR_ENV", "sandbox"))
+        polar_api_url = "https://api.polar.sh" if polar_server == "production" else "https://sandbox-api.polar.sh"
+
+        # Polar API 호출
+        headers = {
+            "Authorization": f"Bearer {polar_access_token}",
+            "Content-Type": "application/json"
+        }
+
+        # Product ID 파싱 (쉼표로 구분된 경우 첫 번째만 사용)
+        product_id = products.split(",")[0] if "," in products else products
+
+        # Checkout 생성 요청
+        checkout_data = {
+            "product_price_id": product_id,
+            "success_url": success_url,
+        }
+
+        # Metadata 추가 (있는 경우)
+        if metadata:
+            try:
+                import json
+                metadata_dict = json.loads(metadata)
+                checkout_data["metadata"] = metadata_dict
+            except Exception as e:
+                logger.warning(f"Metadata 파싱 오류: {e}")
+
+        logger.info(f"Polar Checkout 생성 요청: {checkout_data}")
+
+        response = requests.post(
+            f"{polar_api_url}/v1/checkouts/custom",
+            headers=headers,
+            json=checkout_data,
+            timeout=10
+        )
+
+        if response.status_code != 201:
+            logger.error(f"Polar API 오류: {response.status_code} - {response.text}")
+            return JSONResponse(
+                status_code=response.status_code,
+                content={
+                    "error": "결제 세션 생성 실패",
+                    "message": f"Polar API 오류: {response.text}"
+                }
+            )
+
+        checkout_response = response.json()
+        checkout_url = checkout_response.get("url")
+
+        if not checkout_url:
+            logger.error(f"Checkout URL을 찾을 수 없음: {checkout_response}")
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "결제 URL 생성 실패",
+                    "message": "Polar에서 Checkout URL을 반환하지 않았습니다."
+                }
+            )
+
+        logger.info(f"Polar Checkout URL 생성 성공: {checkout_url}")
+
+        # Checkout URL로 리다이렉트
+        return RedirectResponse(url=checkout_url, status_code=303)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Polar API 요청 오류: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "결제 서비스 연결 실패",
+                "message": f"Polar 서비스에 연결할 수 없습니다: {str(e)}"
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"Polar Checkout 생성 오류: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "결제 세션 생성 실패",
+                "message": f"오류가 발생했습니다: {str(e)}"
             }
         )
 

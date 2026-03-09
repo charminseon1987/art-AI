@@ -367,7 +367,7 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         console.log("[ImageUpload] 파일 정보를 IndexedDB에 저장");
       }
 
-      // 4. Polar 결제 페이지로 리다이렉트
+      // 4. Polar 결제 페이지로 리다이렉트 (Python 백엔드 사용)
       const productId =
         process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID ||
         "a86a8df2-1f4f-4fc5-bed8-176aafe178c7";
@@ -377,7 +377,10 @@ export default function ImageUpload({ onUploadComplete }: ImageUploadProps) {
         originalSize: selectedFile.size,
         compressedSize: fileToStore.size,
       };
-      const checkoutUrl = `/api/checkout?products=${productId}&metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
+
+      // Python 백엔드의 checkout API 호출
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const checkoutUrl = `${backendUrl}/api/polar/checkout?products=${productId}&metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
       console.log("[ImageUpload] Polar 결제 페이지로 리다이렉트:", checkoutUrl);
       window.location.href = checkoutUrl;
     } catch (error: any) {
