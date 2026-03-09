@@ -1,4 +1,5 @@
 export const runtime = "edge";
+import { NextRequest } from "next/server";
 import { Checkout } from "@polar-sh/nextjs";
 
 const accessToken = process.env.POLAR_ACCESS_TOKEN;
@@ -19,7 +20,7 @@ const polarHandler = Checkout({
   server: process.env.POLAR_SERVER === "production" ? "production" : "sandbox",
 });
 
-export const GET = async (request: Request) => {
+export const GET = async (request: NextRequest) => {
   if (!accessToken?.trim()) {
     console.error("[Polar] POLAR_ACCESS_TOKEN이 설정되지 않았습니다.");
     return new Response(
