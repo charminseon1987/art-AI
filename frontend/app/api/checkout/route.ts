@@ -17,7 +17,7 @@ const successUrl =
 const polarHandler = Checkout({
   accessToken: accessToken ?? undefined,
   successUrl,
-  server: process.env.POLAR_SERVER === "production" ? "production" : "sandbox",
+  server: (process.env.POLAR_SERVER || process.env.POLAR_ENV) === "production" ? "production" : "sandbox",
 });
 
 export const GET = async (request: NextRequest) => {
